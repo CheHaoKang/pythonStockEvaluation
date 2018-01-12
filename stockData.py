@@ -8,6 +8,8 @@ import sys
 import datetime
 from fake_useragent import UserAgent
 import time
+import threading
+from time import sleep,ctime
 
 def getStockCodes():
     sql = "SELECT stockCode FROM stocktable"
@@ -37,8 +39,11 @@ def getProxy():
                                    charset="utf8")
             cur = conn.cursor()
             sql = """SELECT proxyIPPort FROM (
-                SELECT proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula 
-                WHERE proxyAvgReponseperiod<5 ORDER BY formula ASC LIMIT 1"""
+                SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
+                WHERE proxyAvgReponseperiod<3 ORDER BY formula ASC, sid ASC LIMIT 1"""
+            # sql = """SELECT proxyIPPort FROM (
+            #     SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
+            #     ORDER BY formula ASC, sid ASC LIMIT 1"""
             cur.execute(sql)
             proxy = cur.fetchone()
 
@@ -74,22 +79,22 @@ def updateProxyInfo(proxy, succeedOrFail, executionTime):
             cur.close()
             conn.close()
 
-
-if __name__ == "__main__":
-    stockCodes = getStockCodes()
-    stockCodes = stockCodes[stockCodes.index("1310") + 1:]
+def retrieveStockData(stockCodes, fromCode, endCode):
+    print('>>>>>', fromCode, ctime() , '<<<<<')
 
     nowProxy = getProxy()
     proxies = {"http": "http://" + nowProxy}
     now = datetime.datetime.now()
-    for stock in stockCodes:
+    for i in range(fromCode, endCode):
+    # for stock in stockCodes:
+        stock = stockCodes[i]
         finish = False
         for year in range(now.year, 1998, -1):
             if finish:
                 break
 
             fromMonth = 12
-            if year==now.year:
+            if year == now.year:
                 fromMonth = now.month
 
             for month in range(fromMonth, 0, -1):
@@ -99,7 +104,6 @@ if __name__ == "__main__":
                 date = str(year) + str(month).zfill(2) + '01'
 
                 url_twse = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY_AVG?response=json&date=' + date + '&stockNo=' + stock
-                # url_twse = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY_AVG?response=json&date=20180101&stockNo=' + stock
                 print(url_twse)
 
                 succeed = False
@@ -111,17 +115,17 @@ if __name__ == "__main__":
                     while not fetchSucceed:
                         try:
                             start = time.time()
-                            res = requests.get(url_twse, headers=header, proxies=proxies)
+                            res = requests.get(url_twse, headers=header, proxies=proxies, timeout=3)
                             end = time.time()
-                            updateProxyInfo(nowProxy, True, end-start)
 
-                            if (end-start)>=5:
+                            if (end - start) >= 3:
                                 nowProxy = getProxy()
                                 proxies = {"http": "http://" + nowProxy}
 
                             print(res.text)
                             s = json.loads(res.text)
                             fetchSucceed = True
+                            updateProxyInfo(nowProxy, True, end - start)
                         except:
                             print("Unexpected error:", sys.exc_info())
                             updateProxyInfo(nowProxy, False, 0)
@@ -145,7 +149,8 @@ if __name__ == "__main__":
                         succeed = True
 
                         try:
-                            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198',
+                                                   db='stockevaluation', charset="utf8")
                             cur = conn.cursor()
                             insert = "INSERT INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
                             cur.executemany(insert, stockDataArray)
@@ -164,3 +169,36 @@ if __name__ == "__main__":
                         print("Fail: " + url_twse + " . Trying...")
 
                     time.sleep(1)
+
+if __name__ == "__main__":
+    stockCodes = getStockCodes()
+    stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
+    stockLength = len(stockCodes)
+
+    threads = []
+
+    t1 = threading.Thread(target=retrieveStockData, args=(stockCodes,0,int(stockLength/3)))
+    threads.append(t1)
+
+    t2 = threading.Thread(target=retrieveStockData, args=(stockCodes, int(stockLength/3), int(stockLength/3*2)+1))
+    threads.append(t2)
+
+    t3 = threading.Thread(target=retrieveStockData, args=(stockCodes, int(stockLength/3*2)+1, int(stockLength)))
+    threads.append(t3)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    print('all end: %s' % ctime())
+
+    # for i in range(0, int(stockLength/3)):
+    #     print(i, stockCodes[i])
+    #
+    # for i in range(int(stockLength/3), int(stockLength/3*2)+1):
+    #     print(i, stockCodes[i])
+    #
+    # for i in range(int(stockLength/3*2)+1, int(stockLength)):
+    #     print(i, stockCodes[i])
