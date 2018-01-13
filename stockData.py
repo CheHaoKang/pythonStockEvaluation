@@ -11,8 +11,11 @@ import time
 import threading
 from time import sleep,ctime
 
+globalTimeout = 5
+globalThreadAmount = 5
+
 def getStockCodes():
-    sql = "SELECT stockCode FROM stocktable"
+    sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
 
     try:
         # Execute the SQL command
@@ -32,7 +35,9 @@ def getStockCodes():
 
     return stockCodes
 
-def getProxy():
+def getProxy(offset):
+    global globalTimeout
+
     while True:
         try:
             conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation',
@@ -40,11 +45,11 @@ def getProxy():
             cur = conn.cursor()
             sql = """SELECT proxyIPPort FROM (
                 SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
-                WHERE proxyAvgReponseperiod<3 ORDER BY formula ASC, sid ASC LIMIT 1"""
+                WHERE proxyAvgReponseperiod<%s ORDER BY formula ASC, sid ASC LIMIT 1 OFFSET %s"""
             # sql = """SELECT proxyIPPort FROM (
             #     SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
             #     ORDER BY formula ASC, sid ASC LIMIT 1"""
-            cur.execute(sql)
+            cur.execute(sql, (globalTimeout, offset))
             proxy = cur.fetchone()
 
             cur.close()
@@ -79,15 +84,37 @@ def updateProxyInfo(proxy, succeedOrFail, executionTime):
             cur.close()
             conn.close()
 
-def retrieveStockData(stockCodes, fromCode, endCode):
+def updateStockFinished(stock, status):
+    while True:
+        try:
+            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation',
+                                   charset="utf8")
+            cur = conn.cursor()
+            sql = """UPDATE stocktable SET stockFinished=%s WHERE stockcode=%s"""
+            cur.execute(sql, (status,stock))
+
+            cur.close()
+            conn.commit()
+            conn.close()
+
+            return
+        except:
+            print("Unexpected error:", sys.exc_info())
+            cur.close()
+            conn.close()
+
+def retrieveStockData(stockCodes, fromCode, endCode, offset):
+    global globalTimeout
+
     print('>>>>>', fromCode, ctime() , '<<<<<')
 
-    nowProxy = getProxy()
+    nowProxy = getProxy(offset)
     proxies = {"http": "http://" + nowProxy}
     now = datetime.datetime.now()
     for i in range(fromCode, endCode):
     # for stock in stockCodes:
         stock = stockCodes[i]
+        updateStockFinished(stock, 'ing')
         finish = False
         for year in range(now.year, 1998, -1):
             if finish:
@@ -115,11 +142,11 @@ def retrieveStockData(stockCodes, fromCode, endCode):
                     while not fetchSucceed:
                         try:
                             start = time.time()
-                            res = requests.get(url_twse, headers=header, proxies=proxies, timeout=3)
+                            res = requests.get(url_twse, headers=header, proxies=proxies, timeout=globalTimeout)
                             end = time.time()
 
-                            if (end - start) >= 3:
-                                nowProxy = getProxy()
+                            if (end - start) >= globalTimeout:
+                                nowProxy = getProxy(offset)
                                 proxies = {"http": "http://" + nowProxy}
 
                             print(res.text)
@@ -129,7 +156,7 @@ def retrieveStockData(stockCodes, fromCode, endCode):
                         except:
                             print("Unexpected error:", sys.exc_info())
                             updateProxyInfo(nowProxy, False, 0)
-                            nowProxy = getProxy()
+                            nowProxy = getProxy(offset)
                             proxies = {"http": "http://" + nowProxy}
 
                     stockDataArray = []
@@ -165,6 +192,7 @@ def retrieveStockData(stockCodes, fromCode, endCode):
                     if '很抱歉' in s['stat']:
                         succeed = True
                         finish = True
+                        updateStockFinished(stock, 'yes')
                     elif not succeed:
                         print("Fail: " + url_twse + " . Trying...")
 
@@ -172,19 +200,22 @@ def retrieveStockData(stockCodes, fromCode, endCode):
 
 if __name__ == "__main__":
     stockCodes = getStockCodes()
-    stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
+    #stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
     stockLength = len(stockCodes)
+    threadAmount = globalThreadAmount
+
+    codeSpanList = []
+    for i in range(threadAmount - 1):
+        codeSpanList.append([int(stockLength / threadAmount) * i, int(stockLength / threadAmount) * (i + 1)])
+    codeSpanList.append([int(stockLength / threadAmount) * (threadAmount - 1), int(stockLength)])
 
     threads = []
 
-    t1 = threading.Thread(target=retrieveStockData, args=(stockCodes,0,int(stockLength/3)))
-    threads.append(t1)
-
-    t2 = threading.Thread(target=retrieveStockData, args=(stockCodes, int(stockLength/3), int(stockLength/3*2)+1))
-    threads.append(t2)
-
-    t3 = threading.Thread(target=retrieveStockData, args=(stockCodes, int(stockLength/3*2)+1, int(stockLength)))
-    threads.append(t3)
+    offset = 0
+    for codeSpan in codeSpanList:
+        t = threading.Thread(target=retrieveStockData, args=(stockCodes,codeSpan[0],codeSpan[1],offset))
+        threads.append(t)
+        offset += 1
 
     for t in threads:
         t.start()
