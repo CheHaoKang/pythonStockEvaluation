@@ -192,11 +192,13 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset):
                     if '很抱歉' in s['stat']:
                         succeed = True
                         finish = True
-                        updateStockFinished(stock, 'yes')
+                        # updateStockFinished(stock, 'yes')
                     elif not succeed:
                         print("Fail: " + url_twse + " . Trying...")
 
                     time.sleep(1)
+
+        updateStockFinished(stock, 'yes')
 
 if __name__ == "__main__":
     stockCodes = getStockCodes()
