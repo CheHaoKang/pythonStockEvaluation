@@ -16,11 +16,22 @@ globalThreadAmount = 5
 
 def getStockCodes():
     sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
-
     try:
         # Execute the SQL command
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        stockCodes = []
+        results = cursor.fetchall()
+        for row in results:
+            stockCodes.append(row[0])
+        print(">>>>>Not Finished>>>>>")
+        print(stockCodes)
+        print("<<<<<Not Finished<<<<<")
+
+        cursor.execute("UPDATE stocktable SET stockFinished='no'")
+
         cursor.execute(sql)
         # Fetch all the rows in a list of lists.
         stockCodes = []
@@ -103,7 +114,7 @@ def updateStockFinished(stock, status):
             cur.close()
             conn.close()
 
-def retrieveStockData(stockCodes, fromCode, endCode, offset):
+def retrieveStockData(stockCodes, fromCode, endCode, offset, fetchDate):
     global globalTimeout
 
     print('>>>>>', fromCode, ctime() , '<<<<<')
@@ -111,20 +122,34 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset):
     nowProxy = getProxy(offset)
     proxies = {"http": "http://" + nowProxy}
     now = datetime.datetime.now()
+
+    if fetchDate!="":
+        fromYear = int(fetchDate[0:4])
+        endYear = int(fetchDate[0:4])-1
+        fromMonth = int(fetchDate[4:6])
+        endMonth = int(fetchDate[4:6])-1
+    else:
+        fromYear = now.year
+        endYear = 1998
+        fromMonth = now.month
+        endMonth = 0
+
     for i in range(fromCode, endCode):
     # for stock in stockCodes:
         stock = stockCodes[i]
         updateStockFinished(stock, 'ing')
         finish = False
-        for year in range(now.year, 1998, -1):
+        # for year in range(now.year, 1998, -1):
+        for year in range(fromYear, endYear, -1):
             if finish:
                 break
 
-            fromMonth = 12
-            if year == now.year:
-                fromMonth = now.month
+            if fetchDate == "":
+                fromMonth = 12
+                if year == now.year:
+                    fromMonth = now.month
 
-            for month in range(fromMonth, 0, -1):
+            for month in range(fromMonth, endMonth, -1):
                 if finish:
                     break
 
@@ -152,7 +177,13 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset):
                             print(res.text)
                             s = json.loads(res.text)
                             fetchSucceed = True
-                            updateProxyInfo(nowProxy, True, end - start)
+
+                            if 'data' in s or ('stat' in s and '很抱歉' in s['stat']):
+                                updateProxyInfo(nowProxy, True, end - start)
+                            else:
+                                updateProxyInfo(nowProxy, False, 0)
+                                nowProxy = getProxy(offset)
+                                proxies = {"http": "http://" + nowProxy}
                         except:
                             print("Unexpected error:", sys.exc_info())
                             updateProxyInfo(nowProxy, False, 0)
@@ -170,7 +201,10 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset):
                                 if not (data[1].isdigit() or data[1].replace('.', '', 1).isdigit()):
                                     continue
 
-                                stockDataArray.append((stock, splitDate, data[1]))
+                                if fetchDate!="" and splitDate.replace('-','')==fetchDate:
+                                    stockDataArray.append((stock, splitDate, data[1]))
+                                elif fetchDate=="":
+                                    stockDataArray.append((stock, splitDate, data[1]))
 
                         print(stockDataArray)
                         succeed = True
@@ -189,7 +223,7 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset):
                             cur.close()
                             conn.close()
 
-                    if '很抱歉' in s['stat']:
+                    if 'stat' in s and '很抱歉' in s['stat']:
                         succeed = True
                         finish = True
                         # updateStockFinished(stock, 'yes')
@@ -213,9 +247,14 @@ if __name__ == "__main__":
 
     threads = []
 
+    # Search for a specific date
+    fetchDate = ""
+    if len(sys.argv) == 2:
+        fetchDate = str(sys.argv[1])
+
     offset = 0
     for codeSpan in codeSpanList:
-        t = threading.Thread(target=retrieveStockData, args=(stockCodes,codeSpan[0],codeSpan[1],offset))
+        t = threading.Thread(target=retrieveStockData, args=(stockCodes,codeSpan[0],codeSpan[1],offset,fetchDate))
         threads.append(t)
         offset += 1
 
