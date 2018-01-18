@@ -42,6 +42,7 @@ def getStockCodes():
         print("Error: unable to fecth data")
 
     cursor.close()
+    conn.commit()
     conn.close()
 
     return stockCodes
@@ -234,7 +235,9 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset, fetchDate):
 
         updateStockFinished(stock, 'yes')
 
+
 if __name__ == "__main__":
+    ###
     stockCodes = getStockCodes()
     #stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
     stockLength = len(stockCodes)
@@ -265,12 +268,3 @@ if __name__ == "__main__":
         t.join()
 
     print('all end: %s' % ctime())
-
-    # for i in range(0, int(stockLength/3)):
-    #     print(i, stockCodes[i])
-    #
-    # for i in range(int(stockLength/3), int(stockLength/3*2)+1):
-    #     print(i, stockCodes[i])
-    #
-    # for i in range(int(stockLength/3*2)+1, int(stockLength)):
-    #     print(i, stockCodes[i])
