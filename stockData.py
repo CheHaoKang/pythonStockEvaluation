@@ -210,19 +210,20 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset, fetchDate):
                         print(stockDataArray)
                         succeed = True
 
-                        try:
-                            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198',
-                                                   db='stockevaluation', charset="utf8")
-                            cur = conn.cursor()
-                            insert = "INSERT INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
-                            cur.executemany(insert, stockDataArray)
-                            cur.close()
-                            conn.commit()
-                            conn.close()
-                        except:
-                            print("Unexpected error:", sys.exc_info())
-                            cur.close()
-                            conn.close()
+                        if stockDataArray: # not empty
+                            try:
+                                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198',
+                                                       db='stockevaluation', charset="utf8")
+                                cur = conn.cursor()
+                                insert = "INSERT INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
+                                cur.executemany(insert, stockDataArray)
+                                cur.close()
+                                conn.commit()
+                                conn.close()
+                            except:
+                                print("Unexpected error:", sys.exc_info())
+                                cur.close()
+                                conn.close()
 
                     if 'stat' in s and '很抱歉' in s['stat']:
                         succeed = True
