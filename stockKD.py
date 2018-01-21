@@ -44,7 +44,7 @@ def getStockCodes():
 
     return stockCodes
 
-def computeStockK(stockCodes, fromCode, endCode, offset, fetchDate):
+def computeStockKD(stockCodes, fromCode, endCode, offset, fetchDate):
     print('#####', fromCode, ctime(), '#####')
 
     conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
@@ -129,4 +129,4 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         fetchDate = str(sys.argv[1])
 
-    computeStockK(stockCodes,0,stockLength,0,fetchDate)
+    computeStockKD(stockCodes,0,stockLength,0,fetchDate)
