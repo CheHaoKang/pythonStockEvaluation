@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     cur = conn.cursor()
     # cur.execute("SELECT * FROM 膠片")
-    insert = "INSERT INTO stocktable (stockCode, stockName, stockFullname, stockNote) VALUES (%s, %s, %s, %s)"
+    insert = "INSERT IGNORE INTO stocktable (stockCode, stockName, stockFullname, stockNote) VALUES (%s, %s, %s, %s)"
     cur.executemany(insert, stocksArray)
     cur.close()
     conn.commit()
