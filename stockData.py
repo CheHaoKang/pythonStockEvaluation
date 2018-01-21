@@ -215,7 +215,7 @@ def retrieveStockData(stockCodes, fromCode, endCode, offset, fetchDate):
                                 conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198',
                                                        db='stockevaluation', charset="utf8")
                                 cur = conn.cursor()
-                                insert = "INSERT INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
+                                insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
                                 cur.executemany(insert, stockDataArray)
                                 cur.close()
                                 conn.commit()
