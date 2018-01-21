@@ -22,6 +22,7 @@ class stockClass(object):
 
     __metaclass__ = ABCMeta
 
+    # Static variables - Attributes of a class hold for all instances in all cases
 	# globalTimeout = 5
 	# globalThreadAmount = 5
 
@@ -177,23 +178,31 @@ class stockClass(object):
                         ua = UserAgent()
                         header = {'User-Agent': str(ua.random)}
 
-                        fetchSucceed = False
-                        while not fetchSucceed:
+                        # fetchSucceed = False
+                        # while not fetchSucceed:
+                        while True:
                             try:
                                 start = time.time()
                                 res = requests.get(url_twse, headers=header, proxies=proxies, timeout=self.timeout)
                                 end = time.time()
 
-                                if (end - start) >= self.timeout:
-                                    nowProxy = self.getProxy(offset)
-                                    proxies = {"http": "http://" + nowProxy}
+                                # if (end - start) >= self.timeout:
+                                #     nowProxy = self.getProxy(offset)
+                                #     proxies = {"http": "http://" + nowProxy}
 
                                 print(res.text)
                                 s = json.loads(res.text)
-                                fetchSucceed = True
+                                # fetchSucceed = True
 
-                                if 'data' in s or ('stat' in s and '很抱歉' in s['stat']):
-                                    self.updateProxyInfo(nowProxy, True, end - start)
+                                if 'data' in s:
+                                    self.updateProxyInfo(nowProxy, True, end-start)
+                                    succeed = True # this is for this round
+                                    break
+                                elif 'stat' in s and '很抱歉' in s['stat']:
+                                    self.updateProxyInfo(nowProxy, True, end-start)
+                                    succeed = True  # this is for this round
+                                    finish = True  # this is for this stock
+                                    break
                                 else:
                                     self.updateProxyInfo(nowProxy, False, 0)
                                     nowProxy = self.getProxy(offset)
@@ -205,7 +214,7 @@ class stockClass(object):
                                 proxies = {"http": "http://" + nowProxy}
 
                         stockDataArray = []
-                        if 'data' in s:
+                        if succeed and 'data' in s:
                             for data in (s['data']):
                                 if '月' not in data[0]:
                                     splitDate = data[0].split('/')
@@ -221,7 +230,7 @@ class stockClass(object):
                                         stockDataArray.append((stock, splitDate, data[1]))
 
                             print(stockDataArray)
-                            succeed = True
+                            # succeed = True
 
                             if stockDataArray:  # not empty
                                 try:
@@ -237,11 +246,11 @@ class stockClass(object):
                                     cur.close()
                                     conn.close()
 
-                        if 'stat' in s and '很抱歉' in s['stat']:
-                            succeed = True
-                            finish = True
+                        # if 'stat' in s and '很抱歉' in s['stat']:
+                        #     succeed = True
+                        #     finish = True
                             # updateStockFinished(stock, 'yes')
-                        elif not succeed:
+                        if not succeed:
                             print("Fail: " + url_twse + " . Trying...")
 
                         time.sleep(1)
@@ -259,8 +268,8 @@ class stockClass(object):
             stock = stockCodes[i]
             stockData = []
 
-            fetchSucceed = False
-            while not fetchSucceed:
+            sqlSucceed = False
+            while not sqlSucceed:
                 if fetchDate == "":
                     sql = "SELECT * FROM stockdata WHERE stockcode=%s ORDER BY stockDate ASC"
                 else:
@@ -272,7 +281,7 @@ class stockClass(object):
                     results = cursor.fetchall()
                     for row in results:
                         stockData.append([str(row[2]), row[3], row[4], row[5]])
-                    fetchSucceed = True
+                    sqlSucceed = True
                 except:
                     print("Error: unable to fecth data")
 
@@ -305,8 +314,8 @@ class stockClass(object):
                 print(max(slice, key=lambda x: x[1]))
                 print(min(slice, key=lambda x: x[1]))
                 if (float((max(slice, key=lambda x: x[1]))[1]) - float(min(slice, key=lambda x: x[1])[1])) != 0:
-                    rsv = (float(stockData[j][1]) - float(min(slice, key=lambda x: x[1])[1])) / (
-                    float((max(slice, key=lambda x: x[1]))[1]) - float(min(slice, key=lambda x: x[1])[1])) * 100.0
+                    rsv = (float(stockData[j][1]) - float(min(slice, key=lambda x: x[1])[1])) / \
+                        (float((max(slice, key=lambda x: x[1]))[1]) - float(min(slice, key=lambda x: x[1])[1])) * 100.0
                 else:
                     rsv = 50.0
                 curK = 2.0 / 3.0 * preK + 1.0 / 3.0 * rsv
@@ -315,15 +324,53 @@ class stockClass(object):
                 print((curK, curD, stock, stockData[j][0]))
                 stockKDList.append((curK, curD, stock, stockData[j][0]))
 
-            try:
-                sql = "UPDATE stockdata SET stockK=%s, stockD=%s WHERE stockCode=%s AND stockDate=%s"
-                cursor.executemany(sql, stockKDList)
-                conn.commit()
-            except:
-                print("Unexpected error:", sys.exc_info())
+            while True:
+                try:
+                    sql = "UPDATE stockdata SET stockK=%s, stockD=%s WHERE stockCode=%s AND stockDate=%s"
+                    cursor.executemany(sql, stockKDList)
+                    conn.commit()
+                    break
+                except:
+                    print("Unexpected error:", sys.exc_info())
 
         cursor.close()
         conn.close()
+
+    def retrieveLowestIndexCurrentIndex(self):
+        sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
+        try:
+            # Execute the SQL command
+            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation',
+                                   charset="utf8")
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            stockCodes = []
+            results = cursor.fetchall()
+            for row in results:
+                stockCodes.append(row[0])
+            print(">>>>>Not Finished>>>>>")
+            print(stockCodes)
+            print("<<<<<Not Finished<<<<<")
+
+            cursor.execute("UPDATE stocktable SET stockFinished='no'")
+
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            stockCodes = []
+            results = cursor.fetchall()
+            for row in results:
+                stockCodes.append(row[0])
+        except:
+            print("Error: unable to fecth data")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    @staticmethod
+    def make_car_sound():
+        print('VRooooommmm!')
 
     @abstractmethod
     def vehicle_type(self):

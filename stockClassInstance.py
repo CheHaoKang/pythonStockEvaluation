@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
 		functionCall = funcDict[str(sys.argv[1])]
 		fetchDate = ""
-		if sys.argv[2]:
+		if len(sys.argv)==3:
 			fetchDate = str(sys.argv[2])
 
 		stockCodes = stockInstance.getStockCodes()
