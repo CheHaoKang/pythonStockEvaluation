@@ -1,5 +1,10 @@
 cd "C:\Program Files\MariaDB 10.2\bin"
-mysqldump -u root -p89787198 stockevaluation stockdata > C:\\Users\\blueplanet\\PycharmProjects\\stockdata-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
-mysqldump -u root -p89787198 stockevaluation stockproxies > C:\\Users\\blueplanet\\PycharmProjects\\stockproxies-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
-mysqldump -u root -p89787198 stockevaluation stocktable > C:\\Users\\blueplanet\\PycharmProjects\\stocktable-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
-mysqldump -u root -p89787198 stockevaluation stockinstitutionalinvestor > C:\\Users\\blueplanet\\PycharmProjects\\stockinstitutionalinvestor-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
+if not exist "C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp" mkdir C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp
+
+forfiles /p "C:\Users\blueplanet\PycharmProjects\SQLBackUp" /s /m *.* /D -7 /C "cmd /c del @file"
+rem delete files 7 days ago
+
+mysqldump -u root -p89787198 stockevaluation stockdata > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stockdata-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
+mysqldump -u root -p89787198 stockevaluation stockproxies > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stockproxies-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
+mysqldump -u root -p89787198 stockevaluation stocktable > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stocktable-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
+mysqldump -u root -p89787198 stockevaluation stockinstitutionalinvestor > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stockinstitutionalinvestor-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql

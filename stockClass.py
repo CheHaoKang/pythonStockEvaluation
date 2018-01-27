@@ -289,7 +289,7 @@ class stockClass(object):
                 continue
 
             if fetchDate != "":
-                stockData = stockData[::-1]
+                stockData = stockData[::-1] # reverse the list since we only need the current date
                 end = 9
             else:
                 end = len(stockData)
@@ -298,6 +298,9 @@ class stockClass(object):
 
             stockKDList = []
             for j in range(8, end):
+                if stockData[j][2]!=0 and stockData[j][3]!=0:   # if computed before, skip it
+                    break
+
                 if 'curK' in locals():
                     preK = curK
                     preD = curD
