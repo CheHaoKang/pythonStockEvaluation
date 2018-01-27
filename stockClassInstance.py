@@ -21,7 +21,8 @@ if __name__ == "__main__":
 
 		funcDict = {
 			'retrieveStockData': stockInstance.retrieveStockData,
-			'computeStockKD': stockInstance.computeStockKD
+			'computeStockKD': stockInstance.computeStockKD,
+			'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors
 		}
 
 		if str(sys.argv[1]) not in funcDict.keys():
@@ -33,27 +34,30 @@ if __name__ == "__main__":
 		if len(sys.argv)==3:
 			fetchDate = str(sys.argv[2])
 
-		stockCodes = stockInstance.getStockCodes()
-		# stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
-		stockLength = len(stockCodes)
+		if str(sys.argv[1])!='getInstitutionalInvestors':
+			stockCodes = stockInstance.getStockCodes()
+			# stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
+			stockLength = len(stockCodes)
 
-		codeSpanList = []
-		for i in range(threadAmount - 1):
-			codeSpanList.append([int(stockLength / threadAmount) * i, int(stockLength / threadAmount) * (i + 1)])
-		codeSpanList.append([int(stockLength / threadAmount) * (threadAmount - 1), int(stockLength)])
+			codeSpanList = []
+			for i in range(threadAmount - 1):
+				codeSpanList.append([int(stockLength / threadAmount) * i, int(stockLength / threadAmount) * (i + 1)])
+			codeSpanList.append([int(stockLength / threadAmount) * (threadAmount - 1), int(stockLength)])
 
-		threads = []
+			threads = []
 
-		offset = 0
-		for codeSpan in codeSpanList:
-			t = threading.Thread(target=functionCall, args=(stockCodes, codeSpan[0], codeSpan[1], offset, fetchDate))
-			threads.append(t)
-			offset += 1
+			offset = 0
+			for codeSpan in codeSpanList:
+				t = threading.Thread(target=functionCall, args=(stockCodes, codeSpan[0], codeSpan[1], offset, fetchDate))
+				threads.append(t)
+				offset += 1
 
-		for t in threads:
-			t.start()
+			for t in threads:
+				t.start()
 
-		for t in threads:
-			t.join()
+			for t in threads:
+				t.join()
 
-		print('all end: %s' % ctime())
+			print('all end: %s' % ctime())
+		else:
+			functionCall(fetchDate)
