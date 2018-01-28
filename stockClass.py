@@ -11,6 +11,8 @@ from fake_useragent import UserAgent
 import time
 import threading
 from time import sleep,ctime
+import csv
+import re
 
 class stockClass(object):
     """This class is for retrieving stock-related data
@@ -431,33 +433,202 @@ class stockClass(object):
         cursor.close()
         conn.close()
 
-    def retrieveLowestIndexCurrentIndex(self):
-        sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
+    def getStockNameInfo(self):
+        sql = "SELECT stockCode, stockName, stockInfo FROM stocktable"
         try:
             # Execute the SQL command
-            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation',
-                                   charset="utf8")
+            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
             cursor.execute(sql)
             # Fetch all the rows in a list of lists.
-            stockCodes = []
+            stockCodeNames = {}
             results = cursor.fetchall()
             for row in results:
-                stockCodes.append(row[0])
-            print(">>>>>Not Finished>>>>>")
-            print(stockCodes)
-            print("<<<<<Not Finished<<<<<")
-
-            cursor.execute("UPDATE stocktable SET stockFinished='no'")
-
-            cursor.execute(sql)
-            # Fetch all the rows in a list of lists.
-            stockCodes = []
-            results = cursor.fetchall()
-            for row in results:
-                stockCodes.append(row[0])
+                stockCodeNames[row[0]] = [row[1],row[2]]
         except:
             print("Error: unable to fecth data")
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+        return stockCodeNames
+
+    def getStockInfo(self):
+        stockCodes = self.getStockCodes()
+        # stockCodes = ['9962']
+
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cur = conn.cursor()
+        sql = "UPDATE stocktable SET stockInfo=%s WHERE stockcode=%s"
+
+        for stock in stockCodes:
+            url_yahoo = 'https://tw.finance.yahoo.com/d/s/company_' + stock + '.html'
+            print(url_yahoo)
+
+            while True:
+                nowProxy = self.getProxy(0)
+                proxies = {"http": "http://" + nowProxy}
+                ua = UserAgent()
+                header = {'User-Agent': str(ua.random)}
+
+                try:
+                    res = requests.get(url_yahoo, headers=header, proxies=proxies, timeout=self.timeout)
+                    res.encoding = 'big5-hkscs'
+                    if '奇摩股市' in res.text:
+                        print('>>>Found<<<')
+                        print(res.text)
+
+                        reGetStockInfo = re.compile(r'td\ width.*?營收比重.*?yui-td-left">(.*?)<\/td>', re.S|re.UNICODE)
+                        for stockInfo in reGetStockInfo.findall(res.text):
+                            print(stock,stockInfo)
+                            while True:
+                                try:
+                                    cur.execute(sql, (stockInfo.strip(),stock))
+                                    conn.commit()
+                                    break
+                                except:
+                                    print("Unexpected error:", sys.exc_info())
+                        break
+                    elif 'tw.yahoo.com/?err=404' or '奇摩首頁' or '內容目前不可用' in res.text:
+                        print('>>>Not Found<<<')
+                        print(res.text)
+                        break
+                except:
+                    print("Unexpected error:", sys.exc_info())
+
+        cur.close()
+        conn.close()
+
+    def retrieveLowestIndexCurrentIndex(self,date):
+        #*** Get lowest indices
+        sql = """SELECT sd.stockcode, sd.stockdate, sd.stockindex, sd.stockK, sd.stockD
+                FROM (
+                SELECT stockcode, MIN(NULLIF(stockindex, 0)) AS minindex
+                FROM stockdata
+                GROUP BY stockcode
+                ) AS mindata INNER JOIN stockdata AS sd ON sd.stockcode=mindata.stockcode AND sd.stockindex=mindata.minindex"""
+
+        while True:
+            try:
+                # Execute the SQL command
+                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cursor = conn.cursor()
+                cursor.execute(sql)
+                # Fetch all the rows in a list of lists.
+                stockCodeDateLowestindex = {}
+                results = cursor.fetchall()
+                for row in results:
+                    stockCodeDateLowestindex[row[0]] = [str(row[1]), row[2], row[3], row[4]]
+
+                print(stockCodeDateLowestindex)
+                break
+            except:
+                print("Error: unable to fecth data")
+        #___ Get lowest indices
+
+        #*** Get current indices
+        sql = """SELECT * FROM stockdata sd INNER JOIN (
+	              SELECT stockCode, MAX(stockDate) AS maxDate FROM stockdata GROUP BY stockCode
+                 ) stockMaxDate ON sd.stockCode=stockMaxDate.stockCode AND sd.stockDate=stockMaxDate.maxDate"""
+
+        while True:
+            try:
+                # Execute the SQL command
+                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cursor = conn.cursor()
+                cursor.execute(sql)
+                # Fetch all the rows in a list of lists.
+                stockCodeCurrentindex = {}
+                results = cursor.fetchall()
+                for row in results:
+                    stockCodeCurrentindex[row[1]] = [str(row[2]), row[3], row[4], row[5]]
+
+                print(stockCodeCurrentindex)
+                break
+            except:
+                print("Error: unable to fecth data")
+        #___ Get current indices
+
+        #*********** Find potential stocks
+        #   1. Select the lowest price of one stock and compare to the current index
+        #   2. if the ratio of the absolute value of the difference between the lowest and the current to the lowest is within 10%
+        #   3. also pick the KD values these ten days
+        #***********
+        # sqlGetLastSevenDays = 'SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s ORDER BY stockdate DESC LIMIT 7'
+        # sqlGetLastSevenDaysInvest = 'SELECT stockcode,stockdate,SUM(stockAmount) FROM stockinstitutionalinvestor WHERE stockcode=%s GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7'
+        sqlGetLastSevenDays = """
+            SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA FROM
+                (SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s 
+                ORDER BY stockdate DESC LIMIT 7
+                ) stockindices LEFT JOIN (
+                SELECT stockcode,stockdate,SUM(stockAmount) AS sSA FROM stockinstitutionalinvestor WHERE stockcode=%s 
+                GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7) AS sumSA 
+            ON stockindices.stockcode=sumSA.stockcode AND stockindices.stockdate=sumSA.stockdate
+        """
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cursor = conn.cursor()
+        stockCodeIndices = {}
+        for stock in stockCodeCurrentindex:
+            try:
+                if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2:
+                    while True:
+                        try:
+                            # Execute the SQL command
+                            cursor.execute(sqlGetLastSevenDays, (stock,stock))
+                            # Fetch all the rows in a list of lists.
+                            results = cursor.fetchall()
+                            if results:
+                                stockCodeIndices[stock] = []
+                                for row in results:
+                                    stockCodeIndices[stock].append([str(row[1]), row[2], row[3], row[4], row[5]])
+                                stockCodeIndices[stock].append([str(stockCodeDateLowestindex[stock][0]+'(LOWEST)'), stockCodeDateLowestindex[stock][1], stockCodeDateLowestindex[stock][2], stockCodeDateLowestindex[stock][3]])
+                            break
+                        except:
+                            print("Unexpected error:", sys.exc_info())
+
+                    # print(">>>")
+                    # print(stock, stockCodeCurrentindex[stock])
+                    # print(stock, stockCodeDateLowestindex[stock])
+                    # print("<<<")
+            except:
+                print("Unexpected error:", sys.exc_info())
+        print(stockCodeIndices)
+        #___ Find potential stocks
+
+        #*** Output to a CSV file
+        file = open('potentialStocks.csv', 'w', newline='')
+        csvCursor = csv.writer(file)
+
+        # write header to csv file
+        csvHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockK', 'stockD', 'amount']
+        csvCursor.writerow(csvHeader)
+        line = []
+        stockCodeNames = self.getStockNameInfo()
+
+        for i in range(len(csvHeader)):
+            line.append('----------')
+        csvCursor.writerow(line)
+        for stock in stockCodeIndices:
+            first = True
+            print(stock)
+            for oneRow in stockCodeIndices[stock]:
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock)):
+                    break
+
+                oneRow.insert(0, stock)
+                oneRow.insert(1, stockCodeNames[stock][0])
+                oneRow.insert(2, stockCodeNames[stock][1])
+                if first:
+                    oneRow.append('https://tw.stock.yahoo.com/q/ta?s=' + stock + '&tech_submit=%ACd+%B8%DF')
+                    first = False
+                csvCursor.writerow(oneRow)
+
+            if not first:
+                csvCursor.writerow([])
+
+        file.close()
+        #___ Output to a CSV file
 
         conn.commit()
         cursor.close()

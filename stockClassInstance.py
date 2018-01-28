@@ -13,6 +13,14 @@ from time import sleep,ctime
 from stockClass import *
 
 if __name__ == "__main__":
+	# stockInstance = stockClass(5, 5)
+	# stockInstance.retrieveLowestIndexCurrentIndex()
+	# stockInstance.computeStockKD(['00632R'], 0, 1, 0, '20180126')
+	# stockInstance.getStockInfo()
+
+	##############################################
+	noMultiThread = ['getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex']
+
 	if len(sys.argv) < 2:
 		print("The first parameter must be the function you want to call.")
 	else :
@@ -22,7 +30,8 @@ if __name__ == "__main__":
 		funcDict = {
 			'retrieveStockData': stockInstance.retrieveStockData,
 			'computeStockKD': stockInstance.computeStockKD,
-			'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors
+			'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors,
+			'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex
 		}
 
 		if str(sys.argv[1]) not in funcDict.keys():
@@ -34,7 +43,7 @@ if __name__ == "__main__":
 		if len(sys.argv)==3:
 			fetchDate = str(sys.argv[2])
 
-		if str(sys.argv[1])!='getInstitutionalInvestors':
+		if str(sys.argv[1]) not in noMultiThread:
 			stockCodes = stockInstance.getStockCodes()
 			# stockCodes = stockCodes[stockCodes.index("2405") + 1:] # comment this line
 			stockLength = len(stockCodes)
