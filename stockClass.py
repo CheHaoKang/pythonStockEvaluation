@@ -433,8 +433,13 @@ class stockClass(object):
         cursor.close()
         conn.close()
 
-    def getStockNameInfo(self):
-        sql = "SELECT stockCode, stockName, stockInfo FROM stocktable"
+    def getStockNameInfoStartupdate(self):
+        sql = """
+        SELECT st.stockCode, st.stockName, st.stockInfo, stStartup.stockdate FROM stocktable AS st
+        LEFT JOIN (
+        SELECT stockcode, stockdate FROM stockdata GROUP BY stockcode ORDER BY stockdate ASC
+        ) stStartup ON st.stockCode=stStartup.stockcode
+        """
         try:
             # Execute the SQL command
             conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
@@ -444,7 +449,7 @@ class stockClass(object):
             stockCodeNames = {}
             results = cursor.fetchall()
             for row in results:
-                stockCodeNames[row[0]] = [row[1],row[2]]
+                stockCodeNames[row[0]] = [row[1],row[2], str(row[3])]
         except:
             print("Error: unable to fecth data")
 
@@ -597,14 +602,15 @@ class stockClass(object):
         #___ Find potential stocks
 
         #*** Output to a CSV file
-        file = open('potentialStocks.csv', 'w', newline='')
+        now = datetime.datetime.now()
+        file = open('potentialStocks-'+now.strftime("%Y-%m-%d")+'.csv', 'w', newline='')
         csvCursor = csv.writer(file)
 
         # write header to csv file
         csvHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockK', 'stockD', 'amount']
         csvCursor.writerow(csvHeader)
         line = []
-        stockCodeNames = self.getStockNameInfo()
+        stockCodeNames = self.getStockNameInfoStartupdate()
 
         for i in range(len(csvHeader)):
             line.append('----------')
@@ -625,6 +631,7 @@ class stockClass(object):
                 csvCursor.writerow(oneRow)
 
             if not first:
+                csvCursor.writerow([stock, stockCodeNames[stock][0],stockCodeNames[stock][1],str(stockCodeNames[stock][2]) + ' 上市'])
                 csvCursor.writerow([])
 
         file.close()
