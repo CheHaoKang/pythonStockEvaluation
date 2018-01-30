@@ -10,12 +10,16 @@ from fake_useragent import UserAgent
 import time
 import threading
 from time import sleep,ctime
+
+from openpyxl.styles import Font, Color
+
 from stockClass import *
+from openpyxl import Workbook
 
 if __name__ == "__main__":
 	# stockInstance = stockClass(5, 5)
 	# stockInstance.retrieveLowestIndexCurrentIndex()
-	# stockInstance.computeStockKD(['00632R'], 0, 1, 0, '20180126')
+	# stockInstance.computeStockKD(['8429'], 0, 1, 0, '20180129')
 	# stockInstance.getStockInfo()
 
 	##############################################

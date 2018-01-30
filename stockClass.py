@@ -13,6 +13,9 @@ import threading
 from time import sleep,ctime
 import csv
 import re
+from openpyxl import Workbook
+from openpyxl.styles import Font, Color
+
 
 class stockClass(object):
     """This class is for retrieving stock-related data
@@ -374,7 +377,7 @@ class stockClass(object):
                     # Fetch all the rows in a list of lists.
                     results = cursor.fetchall()
                     for row in results:
-                        stockData.append([str(row[2]), row[3], row[4], row[5]])
+                        stockData.append([str(row[2]), row[3], row[4], row[5]]) #stockDate, stockIndex, stockK,stockD
                     sqlSucceed = True
                 except:
                     print("Error: unable to fecth data")
@@ -390,15 +393,16 @@ class stockClass(object):
 
             print(stockData)
 
+            curK = curD = -1.0
             stockKDList = []
             for j in range(8, end):
-                if stockData[j][2]!=0 and stockData[j][3]!=0:   # if computed before, skip it
+                if stockData[j][2]!=0.0 and stockData[j][3]!=0.0:   # if computed before, skip it
                     break
 
-                if 'curK' in locals():
+                if curK!=-1.0 and curD!=-1.0:
                     preK = curK
                     preD = curD
-                elif stockData[j - 1][2] == 0.0:
+                elif stockData[j - 1][2] == 0.0 and stockData[j - 1][3] == 0.0:
                     preK = 50.0
                     preD = 50.0
                 else:
@@ -565,10 +569,10 @@ class stockClass(object):
         sqlGetLastSevenDays = """
             SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA FROM
                 (SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s 
-                ORDER BY stockdate DESC LIMIT 7
+                ORDER BY stockdate DESC LIMIT 14
                 ) stockindices LEFT JOIN (
                 SELECT stockcode,stockdate,SUM(stockAmount) AS sSA FROM stockinstitutionalinvestor WHERE stockcode=%s 
-                GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7) AS sumSA 
+                GROUP BY stockdate ORDER BY stockdate DESC LIMIT 14) AS sumSA 
             ON stockindices.stockcode=sumSA.stockcode AND stockindices.stockdate=sumSA.stockdate
         """
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
@@ -636,6 +640,51 @@ class stockClass(object):
 
         file.close()
         #___ Output to a CSV file
+
+        #*** Output to a Excel file
+        wb = Workbook()
+
+        # grab the active worksheet
+        ws = wb.active
+        ws.title = 'potentialStocks'  # 設置worksheet的標題
+        ft = Font()
+        ft.underline = 'single'    # add single underline
+        ft.color = Color(rgb='000000FF')  # add blue color
+        ft2 = Font()
+        ft2.color = Color(rgb='000000FF')  # add blue color
+
+        # write header
+        excelHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockK', 'stockD', 'amount']
+        ws.append(excelHeader)
+        line = []
+        for i in range(len(excelHeader)):
+            line.append('----------')
+        ws.append(line)
+
+        stockCodeNames = self.getStockNameInfoStartupdate()
+        for stock in stockCodeIndices:
+            first = True
+            print(stock)
+            for oneRow in stockCodeIndices[stock]:
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock)):
+                    break
+
+                oneRow.insert(0, stock)
+                oneRow.insert(1, stockCodeNames[stock][0])
+                oneRow.insert(2, stockCodeNames[stock][1])
+                ws.append(oneRow)
+                if first:
+                    ws['I'+str(ws._current_row)] = '=HYPERLINK("{}", "{}")'.format('https://tw.stock.yahoo.com/q/ta?s=' + stock + '&tech_submit=%ACd+%B8%DF', "Link")
+                    ws['I'+str(ws._current_row)].font = ft
+                    first = False
+
+            if not first:
+                ws.append([stock, stockCodeNames[stock][0],stockCodeNames[stock][1],str(stockCodeNames[stock][2]) + ' 上市'])
+                ws['D'+str(ws._current_row)].font = ft2
+                ws.append([])
+
+        wb.save('potentialStocks-'+datetime.datetime.now().strftime("%Y-%m-%d")+'.xlsx')
+        #___ Output to a Excel file
 
         conn.commit()
         cursor.close()
