@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+import copy
 from abc import ABCMeta, abstractmethod
 import requests
 import pymysql.cursors
@@ -15,7 +16,6 @@ import csv
 import re
 from openpyxl import Workbook
 from openpyxl.styles import Font, Color
-
 
 class stockClass(object):
     """This class is for retrieving stock-related data
@@ -578,9 +578,10 @@ class stockClass(object):
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
+        whiteList = ['1102','5880']
         for stock in stockCodeCurrentindex:
             try:
-                if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2:
+                if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
                     while True:
                         try:
                             # Execute the SQL command
@@ -591,6 +592,7 @@ class stockClass(object):
                                 stockCodeIndices[stock] = []
                                 for row in results:
                                     stockCodeIndices[stock].append([str(row[1]), row[2], row[3], row[4], row[5]])
+                                    #stockcode=>stockdate,stockindex,stockK,stockD,amount
                                 stockCodeIndices[stock].append([str(stockCodeDateLowestindex[stock][0]+'(LOWEST)'), stockCodeDateLowestindex[stock][1], stockCodeDateLowestindex[stock][2], stockCodeDateLowestindex[stock][3]])
                             break
                         except:
@@ -604,6 +606,9 @@ class stockClass(object):
                 print("Unexpected error:", sys.exc_info())
         print(stockCodeIndices)
         #___ Find potential stocks
+
+        # copy stockCodeIndices since stockCodeIndices is auto-appended (weird)
+        stockCodeIndicesBackup = copy.deepcopy(stockCodeIndices)
 
         #*** Output to a CSV file
         now = datetime.datetime.now()
@@ -622,9 +627,15 @@ class stockClass(object):
         for stock in stockCodeIndices:
             first = True
             print(stock)
+
+            d1 = datetime.date.today()
+            d0 = datetime.date(int(stockCodeNames[stock][2].split("-")[0]), int(stockCodeNames[stock][2].split('-')[1]), int(stockCodeNames[stock][2].split('-')[2]))
+            delta = (d1 - d0).days
             for oneRow in stockCodeIndices[stock]:
-                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock)):
-                    break
+                #stockcode=>stockdate,stockindex,stockK,stockD,amount
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*3):
+                    if stock not in whiteList:
+                        break
 
                 oneRow.insert(0, stock)
                 oneRow.insert(1, stockCodeNames[stock][0])
@@ -640,6 +651,8 @@ class stockClass(object):
 
         file.close()
         #___ Output to a CSV file
+
+        stockCodeIndices = stockCodeIndicesBackup
 
         #*** Output to a Excel file
         wb = Workbook()
@@ -665,9 +678,14 @@ class stockClass(object):
         for stock in stockCodeIndices:
             first = True
             print(stock)
+
+            d1 = datetime.date.today()
+            d0 = datetime.date(int(stockCodeNames[stock][2].split("-")[0]), int(stockCodeNames[stock][2].split('-')[1]), int(stockCodeNames[stock][2].split('-')[2]))
+            delta = (d1 - d0).days
             for oneRow in stockCodeIndices[stock]:
-                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock)):
-                    break
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*3):
+                    if stock not in whiteList:
+                        break
 
                 oneRow.insert(0, stock)
                 oneRow.insert(1, stockCodeNames[stock][0])

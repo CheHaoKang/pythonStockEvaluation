@@ -10,11 +10,10 @@ from fake_useragent import UserAgent
 import time
 import threading
 from time import sleep,ctime
-
 from openpyxl.styles import Font, Color
-
 from stockClass import *
 from openpyxl import Workbook
+from datetime import date
 
 if __name__ == "__main__":
 	# stockInstance = stockClass(5, 5)
