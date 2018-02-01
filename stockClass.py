@@ -578,7 +578,7 @@ class stockClass(object):
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
-        whiteList = ['1102','5880']
+        whiteList = ['2634','2722','3057','3356','5706','5880','8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
@@ -691,14 +691,22 @@ class stockClass(object):
                 oneRow.insert(1, stockCodeNames[stock][0])
                 oneRow.insert(2, stockCodeNames[stock][1])
                 ws.append(oneRow)
+                if stock in whiteList:
+                    ws['B'+str(ws._current_row)].font = ft2
                 if first:
                     ws['I'+str(ws._current_row)] = '=HYPERLINK("{}", "{}")'.format('https://tw.stock.yahoo.com/q/ta?s=' + stock + '&tech_submit=%ACd+%B8%DF', "Link")
                     ws['I'+str(ws._current_row)].font = ft
                     first = False
 
             if not first:
+                ws['D'+str(ws._current_row)].font = ft2
+                ws['E'+str(ws._current_row)].font = ft2
+                ws['F'+str(ws._current_row)].font = ft2
+                ws['G'+str(ws._current_row)].font = ft2
                 ws.append([stock, stockCodeNames[stock][0],stockCodeNames[stock][1],str(stockCodeNames[stock][2]) + ' 上市'])
                 ws['D'+str(ws._current_row)].font = ft2
+                if stock in whiteList:
+                    ws['B'+str(ws._current_row)].font = ft2
                 ws.append([])
 
         wb.save('potentialStocks-'+datetime.datetime.now().strftime("%Y-%m-%d")+'.xlsx')
