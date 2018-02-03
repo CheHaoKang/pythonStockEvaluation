@@ -437,6 +437,74 @@ class stockClass(object):
         cursor.close()
         conn.close()
 
+    def computeStockMA(self, stockCodes, fromCode, endCode, offset, fetchDate):
+        print('#####', fromCode, ctime(), '#####')
+
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cursor = conn.cursor()
+
+        for stockI in range(fromCode, endCode):
+            # for stock in stockCodes:
+            stock = stockCodes[stockI]
+            stockData = []
+
+            sqlSucceed = False
+            hyphenDate = datetime.datetime.strptime(fetchDate, '%Y%m%d').strftime('%Y-%m-%d')
+            while not sqlSucceed:
+                sql = "SELECT * FROM stockdata WHERE stockcode=%s AND stockdate<=%s ORDER BY stockDate DESC LIMIT 50"
+
+                try:
+                    cursor.execute(sql, (stock,hyphenDate))
+                    # Fetch all the rows in a list of lists.
+                    results = cursor.fetchall()
+                    for row in results:
+                        stockData.append([str(row[2]), row[3]]) #stockDate, stockIndex
+                    sqlSucceed = True
+                except:
+                    print("Error: unable to fecth data")
+
+            # if len(stockData) < 9:
+            #     continue
+
+            #if fetchDate != "":
+            #    stockData = stockData[::-1] # reverse the list since we only need the current date
+            #     end = 9
+            # else:
+            #     end = len(stockData)
+
+            print(stockData)
+
+            maList = [18, 50]
+            maIndices = []
+            for ma in maList:
+                if len(stockData) >= ma:
+                    sum = 0.0
+                    for maI in range(0,ma):
+                        sum += float(stockData[maI][1])
+
+                    maIndices.append(sum/float(ma))
+                else:
+                    maIndices.append(0.0)
+
+            while True:
+                try:
+                    sql = "UPDATE stockdata SET "
+                    for ma in maList:
+                        sql += "stockMA" + str(ma) + "=%s,"
+                    sql = sql[:-1]  # remove the last comma
+                    sql += " WHERE stockCode=%s AND stockDate=%s"
+                    maIndices.append(stock)
+                    maIndices.append(hyphenDate)
+
+                    cursor.execute(sql, (maIndices))
+                    conn.commit()
+                    break
+                except:
+                    print("Unexpected error:", sys.exc_info())
+
+        cursor.close()
+        conn.close()
+
     def getStockNameInfoStartupdate(self):
         sql = """
         SELECT st.stockCode, st.stockName, st.stockInfo, stStartup.stockdate FROM stocktable AS st
@@ -511,7 +579,7 @@ class stockClass(object):
 
     def retrieveLowestIndexCurrentIndex(self,date):
         #*** Get lowest indices
-        sql = """SELECT sd.stockcode, sd.stockdate, sd.stockindex, sd.stockK, sd.stockD
+        sql = """SELECT sd.stockcode, sd.stockdate, sd.stockindex, sd.stockK, sd.stockD, sd.stockMA18, sd.stockMA50
                 FROM (
                 SELECT stockcode, MIN(NULLIF(stockindex, 0)) AS minindex
                 FROM stockdata
@@ -528,7 +596,7 @@ class stockClass(object):
                 stockCodeDateLowestindex = {}
                 results = cursor.fetchall()
                 for row in results:
-                    stockCodeDateLowestindex[row[0]] = [str(row[1]), row[2], row[3], row[4]]
+                    stockCodeDateLowestindex[row[0]] = [str(row[1]), row[2], row[5], row[6], row[3], row[4]]
 
                 print(stockCodeDateLowestindex)
                 break
@@ -567,8 +635,8 @@ class stockClass(object):
         # sqlGetLastSevenDays = 'SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s ORDER BY stockdate DESC LIMIT 7'
         # sqlGetLastSevenDaysInvest = 'SELECT stockcode,stockdate,SUM(stockAmount) FROM stockinstitutionalinvestor WHERE stockcode=%s GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7'
         sqlGetLastSevenDays = """
-            SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA FROM
-                (SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s 
+            SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA,stockindices.stockMA18,stockindices.stockMA50 FROM
+                (SELECT stockcode,stockdate,stockindex,stockK,stockD,stockMA18,stockMA50 FROM stockdata WHERE stockcode=%s 
                 ORDER BY stockdate DESC LIMIT 14
                 ) stockindices LEFT JOIN (
                 SELECT stockcode,stockdate,SUM(stockAmount) AS sSA FROM stockinstitutionalinvestor WHERE stockcode=%s 
@@ -578,7 +646,7 @@ class stockClass(object):
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
-        whiteList = ['2634','2722','3057','3356','5706','5880','8429']
+        whiteList = ['2634','2722','3057','3356','5519','5706','8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
@@ -591,9 +659,9 @@ class stockClass(object):
                             if results:
                                 stockCodeIndices[stock] = []
                                 for row in results:
-                                    stockCodeIndices[stock].append([str(row[1]), row[2], row[3], row[4], row[5]])
-                                    #stockcode=>stockdate,stockindex,stockK,stockD,amount
-                                stockCodeIndices[stock].append([str(stockCodeDateLowestindex[stock][0]+'(LOWEST)'), stockCodeDateLowestindex[stock][1], stockCodeDateLowestindex[stock][2], stockCodeDateLowestindex[stock][3]])
+                                    stockCodeIndices[stock].append([str(row[1]), row[2], row[6], row[7], row[3], row[4], row[5]])
+                                    #stockcode=>stockdate,stockindex,stockMA18,stockMA50,stockK,stockD,amount
+                                stockCodeIndices[stock].append([str(stockCodeDateLowestindex[stock][0]+'(LOWEST)'), stockCodeDateLowestindex[stock][1], stockCodeDateLowestindex[stock][2], stockCodeDateLowestindex[stock][3], stockCodeDateLowestindex[stock][4], stockCodeDateLowestindex[stock][5]])
                             break
                         except:
                             print("Unexpected error:", sys.exc_info())
@@ -616,7 +684,7 @@ class stockClass(object):
         csvCursor = csv.writer(file)
 
         # write header to csv file
-        csvHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockK', 'stockD', 'amount']
+        csvHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockMA18','stockMA50', 'stockK', 'stockD', 'amount']
         csvCursor.writerow(csvHeader)
         line = []
         stockCodeNames = self.getStockNameInfoStartupdate()
@@ -667,12 +735,12 @@ class stockClass(object):
         ft2.color = Color(rgb='000000FF')  # add blue color
 
         # write header
-        excelHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex', 'stockK', 'stockD', 'amount']
-        ws.append(excelHeader)
+        excelHeader = ['stockCode', 'stockName', 'stockInfo', 'stockDate', 'stockIndex','stockMA18','stockMA50', 'stockK', 'stockD', 'amount']
+        # ws.append(excelHeader)
         line = []
         for i in range(len(excelHeader)):
             line.append('----------')
-        ws.append(line)
+        # ws.append(line)
 
         stockCodeNames = self.getStockNameInfoStartupdate()
         for stock in stockCodeIndices:
@@ -686,6 +754,12 @@ class stockClass(object):
                 if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*3):
                     if stock not in whiteList:
                         break
+                    else:
+                        ws.append(excelHeader)
+                        ws.append(line)
+                elif first:
+                    ws.append(excelHeader)
+                    ws.append(line)
 
                 oneRow.insert(0, stock)
                 oneRow.insert(1, stockCodeNames[stock][0])
@@ -694,8 +768,8 @@ class stockClass(object):
                 if stock in whiteList:
                     ws['B'+str(ws._current_row)].font = ft2
                 if first:
-                    ws['I'+str(ws._current_row)] = '=HYPERLINK("{}", "{}")'.format('https://tw.stock.yahoo.com/q/ta?s=' + stock + '&tech_submit=%ACd+%B8%DF', "Link")
-                    ws['I'+str(ws._current_row)].font = ft
+                    ws['K'+str(ws._current_row)] = '=HYPERLINK("{}", "{}")'.format('https://tw.stock.yahoo.com/q/ta?s=' + stock + '&tech_submit=%ACd+%B8%DF', "Link")
+                    ws['K'+str(ws._current_row)].font = ft
                     first = False
 
             if not first:
@@ -703,6 +777,8 @@ class stockClass(object):
                 ws['E'+str(ws._current_row)].font = ft2
                 ws['F'+str(ws._current_row)].font = ft2
                 ws['G'+str(ws._current_row)].font = ft2
+                ws['H'+str(ws._current_row)].font = ft2
+                ws['I'+str(ws._current_row)].font = ft2
                 ws.append([stock, stockCodeNames[stock][0],stockCodeNames[stock][1],str(stockCodeNames[stock][2]) + ' 上市'])
                 ws['D'+str(ws._current_row)].font = ft2
                 if stock in whiteList:

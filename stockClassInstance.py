@@ -17,8 +17,7 @@ from datetime import date
 
 if __name__ == "__main__":
 	# stockInstance = stockClass(5, 5)
-	# stockInstance.retrieveLowestIndexCurrentIndex()
-	# stockInstance.computeStockKD(['8429'], 0, 1, 0, '20180129')
+	# stockInstance.computeStockMA(['8429'], 0, 1, 0, '20180202')
 	# stockInstance.getStockInfo()
 
 	##############################################
@@ -34,7 +33,8 @@ if __name__ == "__main__":
 			'retrieveStockData': stockInstance.retrieveStockData,
 			'computeStockKD': stockInstance.computeStockKD,
 			'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors,
-			'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex
+			'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex,
+			'computeStockMA': stockInstance.computeStockMA
 		}
 
 		if str(sys.argv[1]) not in funcDict.keys():
