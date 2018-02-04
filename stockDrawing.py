@@ -46,11 +46,13 @@ if __name__ == "__main__":
     # subplot2
     plt.setp(subplot2,xticks=x, xticklabels='')#, ylabel='score')
     pL21 = subplot2.plot(x, y21, '', label='stockK', zorder=10)
-    for xCor, yCor in zip(x, y21):
-        subplot2.text(xCor-0.08, yCor+1, str("%.2f" % (yCor)), weight='bold')
+    # for xCor, yCor in zip(x, y21):
+    #     subplot2.text(xCor-0.08, yCor+1, str("%.2f" % (yCor)), weight='bold')
     pL22 = subplot2.plot(x, y22, '', label='stockD', zorder=10)
-    for xCor, yCor in zip(x, y22):
-        subplot2.text(xCor-0.08, yCor-10, str("%.2f" % (yCor)), weight='bold')
+    # for xCor, yCor in zip(x, y22):
+    #     subplot2.text(xCor-0.08, yCor-10, str("%.2f" % (yCor)), weight='bold')
+    subplot2.axhline(y=20, color='g', linestyle='--')
+    subplot2.axhline(y=80, color='r', linestyle='-.')
 
     h2, l2 = subplot2.get_legend_handles_labels()
     lgd2 = subplot2.legend(h2, l2, loc='upper center', fancybox=True, shadow=False, ncol=5) # http://matplotlib.org/users/legend_guide.html

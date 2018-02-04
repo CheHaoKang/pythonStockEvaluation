@@ -417,10 +417,12 @@ class stockClass(object):
                 if (float((max(slice, key=lambda x: x[1]))[1]) - float(min(slice, key=lambda x: x[1])[1])) != 0:
                     rsv = (float(stockData[j][1]) - float(min(slice, key=lambda x: x[1])[1])) / \
                         (float((max(slice, key=lambda x: x[1]))[1]) - float(min(slice, key=lambda x: x[1])[1])) * 100.0
+                    curK = 2.0 / 3.0 * preK + 1.0 / 3.0 * rsv
+                    curD = 2.0 / 3.0 * preD + 1.0 / 3.0 * curK
                 else:
-                    rsv = 50.0
-                curK = 2.0 / 3.0 * preK + 1.0 / 3.0 * rsv
-                curD = 2.0 / 3.0 * preD + 1.0 / 3.0 * curK
+                    # rsv = 50.0
+                    curK = preK
+                    curD = preD
                 print(rsv, preK, preD)
                 print((curK, curD, stock, stockData[j][0]))
                 stockKDList.append((curK, curD, stock, stockData[j][0]))
