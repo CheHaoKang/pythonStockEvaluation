@@ -632,9 +632,9 @@ class stockClass(object):
         #   2. if the ratio of the absolute value of the difference between the lowest and the current to the lowest is within 10%
         #   3. also pick the KD values these ten days
         #***********
-        # sqlGetLastSevenDays = 'SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s ORDER BY stockdate DESC LIMIT 7'
+        # sqlGetLastDays14 = 'SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s ORDER BY stockdate DESC LIMIT 7'
         # sqlGetLastSevenDaysInvest = 'SELECT stockcode,stockdate,SUM(stockAmount) FROM stockinstitutionalinvestor WHERE stockcode=%s GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7'
-        sqlGetLastSevenDays = """
+        sqlGetLastDays14 = """
             SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA,stockindices.stockMA18,stockindices.stockMA50 FROM
                 (SELECT stockcode,stockdate,stockindex,stockK,stockD,stockMA18,stockMA50 FROM stockdata WHERE stockcode=%s 
                 ORDER BY stockdate DESC LIMIT 14
@@ -646,14 +646,14 @@ class stockClass(object):
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
-        whiteList = ['2634','2722','3057','3356','5519','5706','8429']
+        whiteList = ['2634','2722','3057','3356','4141','5519','5706','8072','8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
                     while True:
                         try:
                             # Execute the SQL command
-                            cursor.execute(sqlGetLastSevenDays, (stock,stock))
+                            cursor.execute(sqlGetLastDays14, (stock,stock))
                             # Fetch all the rows in a list of lists.
                             results = cursor.fetchall()
                             if results:
