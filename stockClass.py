@@ -16,6 +16,10 @@ import csv
 import re
 from openpyxl import Workbook
 from openpyxl.styles import Font, Color
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy as np
+import matplotlib.ticker
 
 class stockClass(object):
     """This class is for retrieving stock-related data
@@ -722,7 +726,7 @@ class stockClass(object):
         file.close()
         #___ Output to a CSV file
 
-        stockCodeIndices = stockCodeIndicesBackup
+        stockCodeIndices = copy.deepcopy(stockCodeIndicesBackup)
 
         #*** Output to a Excel file
         wb = Workbook()
@@ -744,6 +748,7 @@ class stockClass(object):
             line.append('----------')
         # ws.append(line)
 
+        qualifiedStocks = []
         stockCodeNames = self.getStockNameInfoStartupdate()
         for stock in stockCodeIndices:
             first = True
@@ -762,6 +767,9 @@ class stockClass(object):
                 elif first:
                     ws.append(excelHeader)
                     ws.append(line)
+
+                #For drawing usage
+                qualifiedStocks.append(stock)
 
                 oneRow.insert(0, stock)
                 oneRow.insert(1, stockCodeNames[stock][0])
@@ -789,6 +797,94 @@ class stockClass(object):
 
         wb.save('potentialStocks-'+datetime.datetime.now().strftime("%Y-%m-%d")+'.xlsx')
         #___ Output to a Excel file
+
+        stockCodeIndices = copy.deepcopy(stockCodeIndicesBackup)
+
+        #*** Draw diagrams
+        days = 14
+        x = []
+        for i in range(1,days+1):
+            x.append(i)
+        x = np.asarray(x) # since zip doesn't accept list
+
+        first = True
+        for stock in qualifiedStocks:
+            plt.rcParams["figure.figsize"] = [12, 6]    # set figure size to enlarge the plot. Remember to do >>> \includegraphics[width=1.0\textwidth] <<<
+            fig, (subplot1, subplot2) = plt.subplots(2, 1,gridspec_kw = {'height_ratios':[5, 1]})#)
+
+            stockInfoDict = {}
+            stockInfoDict['date'] = []
+            stockInfoDict['index'] = []
+            stockInfoDict['ma18'] = []
+            stockInfoDict['ma50'] = []
+            stockInfoDict['k'] = []
+            stockInfoDict['d'] = []
+            stockInfoDict['amount'] = []
+            for oneRow in stockCodeIndices[stock]:
+                stockInfoDict['date'].append(oneRow[0])
+                stockInfoDict['index'].append(oneRow[1])
+                stockInfoDict['ma18'].append(oneRow[2])
+                stockInfoDict['ma50'].append(oneRow[3])
+                stockInfoDict['k'].append(oneRow[4])
+                stockInfoDict['d'].append(oneRow[5])
+                try:
+                    stockInfoDict['amount'].append(oneRow[6]) if oneRow[6] else stockInfoDict['amount'].append(0)
+                except:
+                    print("Unexpected error:", sys.exc_info())
+
+            print(stockInfoDict)
+
+            xtickLabels = stockInfoDict['date'][::-1][1:] # remove the lowest info
+            lowestIndex = stockInfoDict['index'][-1]
+            stockInfoDict['index'] = stockInfoDict['index'][::-1][1:] # remove the lowest info
+            stockInfoDict['ma18'] = stockInfoDict['ma18'][::-1][1:] # remove the lowest info
+            stockInfoDict['ma50'] = stockInfoDict['ma50'][::-1][1:] # remove the lowest info
+            stockInfoDict['k'] = stockInfoDict['k'][::-1][1:] # remove the lowest info
+            stockInfoDict['d'] = stockInfoDict['d'][::-1][1:] # remove the lowest info
+            stockInfoDict['amount'] = stockInfoDict['amount'][::-1]
+
+            print(stockInfoDict)
+
+            plt.setp(subplot1, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1])#, ylabel='score')
+            # plt.xticks(rotation=10)
+            for tick in subplot1.get_xticklabels():
+                tick.set_rotation(20)
+            pL11 = subplot1.plot(x, stockInfoDict['index'], '', label='stockIndex', zorder=10)
+            for xCor, yCor in zip(x, stockInfoDict['index']):
+                subplot1.text(xCor-0.2, yCor-0.06, str(yCor), weight='bold')
+            pL12 = subplot1.plot(x, stockInfoDict['ma18'], '', label='stockMA18', zorder=10)
+            # for xCor, yCor in zip(x, y2):
+            #     subplot1.text(xCor, yCor+0.05, str(yCor), weight='bold')
+            pL13 = subplot1.plot(x, stockInfoDict['ma50'], '', label='stockMA50', zorder=10)
+            # for xCor, yCor in zip(x, y3):
+            #     subplot1.text(xCor, yCor-0.05, str(yCor), weight='bold')
+            subplot1.plot(0.1, lowestIndex, 'ro')
+            subplot1.text(0.1, lowestIndex, str(lowestIndex), weight='bold')
+
+            width = 0.5
+            pLBar = subplot1.twinx()
+            plt.setp(pLBar, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1])
+
+            amountColor = []
+            for amIndex in range(len(stockInfoDict['amount'])):
+                if int(stockInfoDict['amount'][amIndex])<0:
+                    amountColor.append('green')
+                    stockInfoDict['amount'][amIndex] = -float(stockInfoDict['amount'][amIndex])
+                else:
+                    amountColor.append('red')
+
+            print(stockInfoDict['amount'])
+
+            pLBar.bar(x, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor, zorder=1)
+            for xCor, yCor in zip(x-width/2, stockInfoDict['amount']):
+                pLBar.text(xCor, yCor, str(yCor))
+
+            h1, l1 = subplot1.get_legend_handles_labels()
+            lgd = subplot1.legend(h1, l1, loc=3, fancybox=True, shadow=False, ncol=1) # http://matplotlib.org/users/legend_guide.html
+
+            fig.tight_layout()
+            fig.savefig('stockDrawing_' + stock + '.png', bbox_inches='tight')
+        #___ Draw diagrams
 
         conn.commit()
         cursor.close()

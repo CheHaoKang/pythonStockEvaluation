@@ -55,7 +55,7 @@ if __name__ == "__main__":
     subplot2.axhline(y=80, color='r', linestyle='-.')
 
     h2, l2 = subplot2.get_legend_handles_labels()
-    lgd2 = subplot2.legend(h2, l2, loc='upper center', fancybox=True, shadow=False, ncol=5) # http://matplotlib.org/users/legend_guide.html
+    lgd2 = subplot2.legend(h2, l2, loc=3, fancybox=True, shadow=False, ncol=1) # http://matplotlib.org/users/legend_guide.html
 
     fig.tight_layout()
     fig.savefig('stockDrawing.png', bbox_inches='tight')
