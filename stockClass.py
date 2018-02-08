@@ -815,7 +815,7 @@ class stockClass(object):
         for stock in qualifiedStocks:
             plt.rcParams["figure.figsize"] = [12, 6]    # set figure size to enlarge the plot. Remember to do >>> \includegraphics[width=1.0\textwidth] <<<
             fig, (subplot1, subplot2) = plt.subplots(2, 1,gridspec_kw = {'height_ratios':[5, 1]})#)
-            subplot1.set_title(stock + '_' + stockCodeNames[stock][0] + '(' + stockCodeNames[stock][1][:60] + ')')
+            subplot1.set_title(stock + '_' + stockCodeNames[stock][0] + '(' + stockCodeNames[stock][1][:70] + ')')
 
             stockInfoDict = {}
             stockInfoDict['date'] = []
@@ -908,6 +908,7 @@ class stockClass(object):
 
             fig.tight_layout()
             fig.savefig('stockDrawing_' + stock + '_' + stockCodeNames[stock][0] + '.png', bbox_inches='tight')
+            plt.close(fig)
         #___ Draw diagrams
 
         conn.commit()
