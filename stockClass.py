@@ -889,8 +889,20 @@ class stockClass(object):
             for xCor, yCor in zip(x-width/2, stockInfoDict['amount']):
                 pLBar.text(xCor, yCor, str(int(yCor)))
 
+            # 'best'         : 0, (only implemented for axis legends)
+            # 'upper right'  : 1,
+            # 'upper left'   : 2,
+            # 'lower left'   : 3,
+            # 'lower right'  : 4,
+            # 'right'        : 5,
+            # 'center left'  : 6,
+            # 'center right' : 7,
+            # 'lower center' : 8,
+            # 'upper center' : 9,
+            # 'center'       : 10,
+
             h1, l1 = subplot1.get_legend_handles_labels()
-            lgd = subplot1.legend(h1, l1, loc=4, fancybox=False, shadow=False, ncol=1) # http://matplotlib.org/users/legend_guide.html
+            lgd = subplot1.legend(h1, l1, loc=8, fancybox=False, shadow=False, ncol=1) # http://matplotlib.org/users/legend_guide.html
 
             # subplot2
             plt.setp(subplot2,xticks=x, xticklabels='')#, ylabel='score')
