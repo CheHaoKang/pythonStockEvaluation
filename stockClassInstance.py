@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	# stockInstance.getStockInfo()
 
 	##############################################
-	noMultiThread = ['getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex']
+	noMultiThread = ['getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex', 'getPttStockNewsComments']
 
 	if len(sys.argv) < 2:
 		print("The first parameter must be the function you want to call.")
@@ -34,7 +34,8 @@ if __name__ == "__main__":
 			'computeStockKD': stockInstance.computeStockKD,
 			'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors,
 			'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex,
-			'computeStockMA': stockInstance.computeStockMA
+			'computeStockMA': stockInstance.computeStockMA,
+			'getPttStockNewsComments': stockInstance.getPttStockNewsComments
 		}
 
 		if str(sys.argv[1]) not in funcDict.keys():
@@ -42,9 +43,9 @@ if __name__ == "__main__":
 			exit(1)
 
 		functionCall = funcDict[str(sys.argv[1])]
-		fetchDate = ""
+		parameter = ""
 		if len(sys.argv)==3:
-			fetchDate = str(sys.argv[2])
+			parameter = str(sys.argv[2])
 
 		if str(sys.argv[1]) not in noMultiThread:
 			stockCodes = stockInstance.getStockCodes()
@@ -60,7 +61,7 @@ if __name__ == "__main__":
 
 			offset = 0
 			for codeSpan in codeSpanList:
-				t = threading.Thread(target=functionCall, args=(stockCodes, codeSpan[0], codeSpan[1], offset, fetchDate))
+				t = threading.Thread(target=functionCall, args=(stockCodes, codeSpan[0], codeSpan[1], offset, parameter))
 				threads.append(t)
 				offset += 1
 
@@ -72,4 +73,5 @@ if __name__ == "__main__":
 
 			print('all end: %s' % ctime())
 		else:
-			functionCall(fetchDate)
+			# if str(sys.argv[1])!='getPttStockNewsComments':
+			functionCall(parameter)

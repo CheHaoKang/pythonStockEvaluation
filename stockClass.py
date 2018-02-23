@@ -1,5 +1,8 @@
 # -*- coding: UTF-8 -*-
 
+from fake_useragent import UserAgent
+from lxml import etree
+import collections
 import copy
 from abc import ABCMeta, abstractmethod
 import requests
@@ -926,6 +929,42 @@ class stockClass(object):
         conn.commit()
         cursor.close()
         conn.close()
+
+    def getPttStockNewsComments(self,pages):
+        pages = int(pages)
+        ua = UserAgent()
+        header = {'User-Agent': str(ua.random)}
+        urlPttStock = 'https://www.ptt.cc/bbs/Stock/index.html'
+        urlList = []
+        successfulPages = 0
+
+        while successfulPages < pages:
+            try:
+                res = requests.get(urlPttStock, headers=header, timeout=10)#, proxies=proxies, timeout=self.timeout)
+                if '批踢踢實業坊' not in res.text:
+                    continue
+
+                html = etree.HTML(res.text)
+                result = html.xpath('//a/@href')
+                previousPageUrl = ''
+                for oneUrl in result:
+                    splitUrl = oneUrl.split('/')
+                    letters = collections.Counter(splitUrl[-1])
+                    if letters['.']>=3 and oneUrl not in urlList: # filter out urls with less than three dots
+                        urlList.append('https://www.ptt.cc' + oneUrl)
+                    elif re.search('index[0-9]{4,}', splitUrl[-1]) and previousPageUrl=='':
+                        previousPageUrl = oneUrl
+
+                print(urlList)
+                print(previousPageUrl)
+
+                successfulPages += 1
+                urlPttStock = 'https://www.ptt.cc' + previousPageUrl
+                time.sleep(3)
+            except:
+                print("Unexpected error:", sys.exc_info())
+
+        print(urlList)
 
     @staticmethod
     def make_car_sound():
