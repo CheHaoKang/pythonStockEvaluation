@@ -8,6 +8,7 @@ mysqldump -u root -p89787198 stockevaluation stockdata > C:\\Users\\blueplanet\\
 mysqldump -u root -p89787198 stockevaluation stockproxies > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stockproxies-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
 mysqldump -u root -p89787198 stockevaluation stocktable > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stocktable-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
 mysqldump -u root -p89787198 stockevaluation stockinstitutionalinvestor > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stockinstitutionalinvestor-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
+mysqldump -u root -p89787198 stockevaluation stocknewscomments > C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp\\stocknewscomments-%date:~0,4%-%date:~5,2%-%date:~8,2%.sql
 
 cd "C:\Users\blueplanet\PycharmProjects\pythonStockEvaluation"
 C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveLowestIndexCurrentIndex "%date:~0,4%%date:~5,2%%date:~8,2%"

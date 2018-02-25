@@ -4,3 +4,4 @@ potentialStocks-*csv
 potentialStocks-*xlsx
 stockDrawing*.png
 pythonStockEvaluation*
+python.log

@@ -9,7 +9,7 @@ import requests
 import pymysql.cursors
 import json
 import csv
-import sys
+import sys,os
 import datetime
 from fake_useragent import UserAgent
 import time
@@ -22,6 +22,7 @@ from openpyxl.styles import Font, Color
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
+import calendar
 import matplotlib.ticker
 # from pylab import mpl
 #
@@ -940,7 +941,9 @@ class stockClass(object):
 
         while successfulPages < pages:
             try:
-                res = requests.get(urlPttStock, headers=header, timeout=10)#, proxies=proxies, timeout=self.timeout)
+                nowProxy = self.getProxy(0)
+                proxies = {"http": "http://" + nowProxy}
+                res = requests.get(urlPttStock, headers=header, proxies=proxies, timeout=10)#, proxies=proxies, timeout=self.timeout)
                 if '批踢踢實業坊' not in res.text:
                     continue
 
@@ -950,21 +953,121 @@ class stockClass(object):
                 for oneUrl in result:
                     splitUrl = oneUrl.split('/')
                     letters = collections.Counter(splitUrl[-1])
+                    oneUrl = 'https://www.ptt.cc' + oneUrl.strip()
                     if letters['.']>=3 and oneUrl not in urlList: # filter out urls with less than three dots
-                        urlList.append('https://www.ptt.cc' + oneUrl)
+                        urlList.append(oneUrl)
                     elif re.search('index[0-9]{4,}', splitUrl[-1]) and previousPageUrl=='':
                         previousPageUrl = oneUrl
 
-                print(urlList)
-                print(previousPageUrl)
-
                 successfulPages += 1
-                urlPttStock = 'https://www.ptt.cc' + previousPageUrl
-                time.sleep(3)
+                urlPttStock = previousPageUrl
+                time.sleep(2)
             except:
                 print("Unexpected error:", sys.exc_info())
 
         print(urlList)
+
+        # urlList = ['https://www.ptt.cc/bbs/Stock/M.1519271478.A.DBE.html']
+
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cur = conn.cursor()
+        sql = "INSERT IGNORE INTO stocknewscomments (stockNCUrl,stockNCAuthor,stockNCTitle,stockNCContent,stockNCPosttime) VALUES (%s,%s,%s,%s,%s)"
+        insertNewsCommentsArray = []
+
+        for oneUrl in urlList:
+            print(oneUrl)
+            while True:
+                ua = UserAgent()
+                header = {'User-Agent': str(ua.random)}
+
+                try: # for catching requests error
+                    res = requests.get(oneUrl, headers=header, timeout=10)#, proxies=proxies, timeout=self.timeout)
+                    if '批踢踢實業坊' not in res.text:
+                        continue
+
+                    html = etree.HTML(res.text)
+
+                    # matchedPushUserIds = html.xpath('//span[contains(@class,"push-userid")]')
+                    # pushUserIds = []
+                    # for oneUser in matchedPushUserIds:
+                    #     pushUserIds.append(oneUser.text.strip())
+                    # print(pushUserIds)
+
+                    try: #for catching invalid urls
+                        result = html.xpath('//span[contains(@class,"article-meta-value")]')
+                        #[0]=>author name, [1]=>Forum name(Stock), [2]=>title, [3]=>post time
+                        authorName = result[0].text.strip().split(' ')[0]
+                        title = result[2].text.strip()
+                        monthNumber = dict((v,str(k).zfill(2)) for k,v in enumerate(calendar.month_abbr)) # {'': '00', 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
+                        timeStampSeparate = result[3].text.split(' ') #['Sun', 'Feb', '25', '16:37:51', '2018']
+                        timeStamp = timeStampSeparate[4] + '-' + monthNumber[timeStampSeparate[1]] + '-' + timeStampSeparate[2] + ' ' + timeStampSeparate[3]
+                    except Exception as e:
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(exc_type, fname, exc_tb.tb_lineno)
+                        break
+
+                    reGetContent = re.compile(r'<span class="article-meta-value">.*?[\d]{4}<\/span><\/div>(.*?)--.*?<span class="', re.S|re.UNICODE)
+                    content = ''
+                    for content in reGetContent.findall(res.text):
+                        content = content.strip()
+
+                    #main post
+                    insertNewsCommentsArray.append((oneUrl,authorName,title,content,timeStamp))
+                    while True:
+                            try:
+                                print((oneUrl,authorName,title,content,timeStamp))
+                                cur.execute(sql,((oneUrl,authorName,title,content,timeStamp)))
+                                # cur.close()
+                                conn.commit()
+                                # conn.close()
+                                break
+                            except:
+                                print("Unexpected error:", sys.exc_info())
+
+                    #pushed comments
+                    # reGetComments = re.compile(r'">:(.*?)[\s]*?<.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
+                    reGetComments = re.compile(r'[\/\w\s"=-]+>([\w_=-]+)<[\/\w\s"=-]+><[\w\s"=-]+">:(.*?)[\s]*?<\/span.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
+                    pushedUserIdCounter = 0
+                    for userId,comment,commentTimeStamp in reGetComments.findall(res.text):
+                        comment = re.sub(r'<a.*?>', '', comment.strip()).replace('</a>','')
+                        commentTimeStampTemp = commentTimeStamp
+                        commentTimeStamp = timeStamp.split('-')[0] + '-' + commentTimeStamp.replace('/','-').strip()
+                        if commentTimeStamp < timeStamp: # this means the time of the comment is the next year
+                            commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
+                        # print(pushUserIds[pushedUserIdCounter] + '_' + str(comment) + '_' + str(commentTimeStamp))
+                        insertNewsCommentsArray.append((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2))) # add sequential seconds to prevent duplicates
+
+                        while True:
+                            try:
+                                print((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
+                                cur.execute(sql,(oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
+                                # cur.close()
+                                conn.commit()
+                                # conn.close()
+                                break
+                            except:
+                                print("Unexpected error:", sys.exc_info())
+
+                        pushedUserIdCounter += 1
+                    break
+                except:
+                    print("Unexpected error:", sys.exc_info())
+
+            time.sleep(2)
+
+        # print(insertNewsCommentsArray)
+        # if insertNewsCommentsArray:
+        #     while True:
+        #         try:
+        #             cur.executemany(sql,insertNewsCommentsArray)
+        #             cur.close()
+        #             conn.commit()
+        #             conn.close()
+        #             break
+        #         except:
+        #             print("Unexpected error:", sys.exc_info())
+
 
     @staticmethod
     def make_car_sound():
