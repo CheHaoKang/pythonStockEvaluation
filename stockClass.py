@@ -24,6 +24,7 @@ import matplotlib
 import numpy as np
 import calendar
 import matplotlib.ticker
+import jieba
 # from pylab import mpl
 #
 # mpl.rcParams['font.sans-serif'] = ['SimHei'] #將預設字體改用SimHei字體
@@ -1068,6 +1069,70 @@ class stockClass(object):
         #         except:
         #             print("Unexpected error:", sys.exc_info())
 
+    def getStockNameToCode(self):
+        stockNameToCode = {}
+        try:
+            # Execute the SQL command
+            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            cursor = conn.cursor()
+            cursor.execute("SELECT stockCode,TRIM(TRAILING ';' FROM CONCAT_WS(';',stockName,stockOthername)) AS stockAllnames FROM stocktable")
+            # Fetch all the rows in a list of lists.
+            results = cursor.fetchall()
+            for row in results:
+                stockNameToCode[row[0]] = row[0]
+                for stockName in row[1].split(';'):
+                    stockNameToCode[stockName] = row[0]
+
+            print(stockNameToCode)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+        return stockNameToCode
+
+    def FullToHalf(self,s):
+        n = []
+        # s = s.decode('utf-8')
+        for char in s:
+            num = ord(char)
+            if num == 0x3000:
+                num = 32
+            elif 0xFF01 <= num <= 0xFF5E:
+                num -= 0xfee0
+            num = chr(num)
+            n.append(num)
+        return ''.join(n)
+
+    def computeStockSentiment(self,dummy):
+        jieba.set_dictionary('jieba/dict.txt.big')
+        content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
+
+        # print("Input：", self.FullToHalf(content))
+
+        words = jieba.cut(self.FullToHalf(content), cut_all=False)
+
+        stockNameToCode = self.getStockNameToCode()
+        # Add phrases to jieba
+        for stockName in stockNameToCode:
+            jieba.suggest_freq(stockName, True)
+
+        currentStock = '' # remember which stock the comment points to
+        accumulatedNonStockSentiment = 0 # if no stock is identified yet, sum sentiments here
+        for word in words:
+            wordIsStock = False
+            for stockName in stockNameToCode:
+                if stockName in word:
+                    wordIsStock = True
+                    currentStock = stockNameToCode[stockName]
+                    print(stockName, stockNameToCode[stockName], word)
+
+                    break
+
+            if not wordIsStock and currentStock=='':
+                print('compute the sentiment and add it to accumulatedNonStockSentiment')
+            elif not wordIsStock and currentStock!='':
+                print('compute the sentiment and add it to the stock\'s sentiment')
 
     @staticmethod
     def make_car_sound():
