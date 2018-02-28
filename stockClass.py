@@ -1033,7 +1033,7 @@ class stockClass(object):
                         comment = re.sub(r'<a.*?>', '', comment.strip()).replace('</a>','')
                         commentTimeStampTemp = commentTimeStamp
                         commentTimeStamp = timeStamp.split('-')[0] + '-' + commentTimeStamp.replace('/','-').strip()
-                        if commentTimeStamp < timeStamp: # this means the time of the comment is the next year
+                        if commentTimeStamp+':59' < timeStamp: # this means the time of the comment is the next year (:59 is to avoid accidentally jumping to the next year)
                             commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
                         # print(pushUserIds[pushedUserIdCounter] + '_' + str(comment) + '_' + str(commentTimeStamp))
                         insertNewsCommentsArray.append((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2))) # add sequential seconds to prevent duplicates
