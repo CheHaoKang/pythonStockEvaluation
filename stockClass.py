@@ -968,7 +968,7 @@ class stockClass(object):
 
         print(urlList)
 
-        # urlList = ['https://www.ptt.cc/bbs/Stock/M.1519271478.A.DBE.html']
+        # urlList = ['https://www.ptt.cc/bbs/Stock/M.1519884995.A.23D.html']
 
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cur = conn.cursor()
@@ -1000,8 +1000,10 @@ class stockClass(object):
                         authorName = result[0].text.strip().split(' ')[0]
                         title = result[2].text.strip()
                         monthNumber = dict((v,str(k).zfill(2)) for k,v in enumerate(calendar.month_abbr)) # {'': '00', 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
-                        timeStampSeparate = result[3].text.split(' ') #['Sun', 'Feb', '25', '16:37:51', '2018']
-                        timeStamp = timeStampSeparate[4] + '-' + monthNumber[timeStampSeparate[1]] + '-' + timeStampSeparate[2] + ' ' + timeStampSeparate[3]
+                        timeStampSeparate = result[3].text.replace('  ',' ').split(' ') #because the first day of one month takes two spaces (Thu Mar  1 14:16:32 2018). ['Sun', 'Feb', '25', '16:37:51', '2018']
+                        # print(result[3].text)
+                        # print(timeStampSeparate)
+                        timeStamp = timeStampSeparate[4] + '-' + monthNumber[timeStampSeparate[1]] + '-' + timeStampSeparate[2].zfill(2) + ' ' + timeStampSeparate[3] #zfill(2) to transform 1 to 01
                     except Exception as e:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1034,6 +1036,9 @@ class stockClass(object):
                         comment = re.sub(r'<a.*?>', '', comment.strip()).replace('</a>','')
                         commentTimeStampTemp = commentTimeStamp
                         commentTimeStamp = timeStamp.split('-')[0] + '-' + commentTimeStamp.replace('/','-').strip()
+                        # print(timeStamp)
+                        # print(commentTimeStamp)
+                        # print(commentTimeStamp+':59')
                         if commentTimeStamp+':59' < timeStamp: # this means the time of the comment is the next year (:59 is to avoid accidentally jumping to the next year)
                             commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
                         # print(pushUserIds[pushedUserIdCounter] + '_' + str(comment) + '_' + str(commentTimeStamp))
@@ -1091,6 +1096,27 @@ class stockClass(object):
 
         return stockNameToCode
 
+    def getVocabulary(self,tableName):
+        vocabularyList = list()
+        try:
+            # Execute the SQL command
+            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            cursor = conn.cursor()
+            cursor.execute('SELECT GROUP_CONCAT(CONCAT(`word_trad`) SEPARATOR ";") AS positivePhrase FROM ' + tableName)
+            # Fetch all the rows in a list of lists.
+            results = cursor.fetchall()
+            for row in results:
+                for vocabulary in row[0].split(';'):
+                    vocabularyList.append(vocabulary)
+
+            print(vocabularyList)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+        return vocabularyList
+
     def FullToHalf(self,s):
         n = []
         # s = s.decode('utf-8')
@@ -1105,6 +1131,9 @@ class stockClass(object):
         return ''.join(n)
 
     def computeStockSentiment(self,dummy):
+        positiveVocabularyList = self.getVocabulary('stockpositivevocabulary')
+        negativeVocabularyList = self.getVocabulary('stocknegativevocabulary')
+
         jieba.set_dictionary('jieba/dict.txt.big')
         content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
 
@@ -1119,20 +1148,38 @@ class stockClass(object):
 
         currentStock = '' # remember which stock the comment points to
         accumulatedNonStockSentiment = 0 # if no stock is identified yet, sum sentiments here
+        stockcodeToSentiment = dict()
         for word in words:
             wordIsStock = False
             for stockName in stockNameToCode:
                 if stockName in word:
                     wordIsStock = True
                     currentStock = stockNameToCode[stockName]
+
+                    if currentStock not in stockcodeToSentiment:
+                        stockcodeToSentiment[currentStock] = 0
+
                     print(stockName, stockNameToCode[stockName], word)
 
                     break
 
             if not wordIsStock and currentStock=='':
+                if word in positiveVocabularyList:
+                    accumulatedNonStockSentiment += 1
+                elif word in negativeVocabularyList:
+                    accumulatedNonStockSentiment -= 1
+
                 print('compute the sentiment and add it to accumulatedNonStockSentiment')
             elif not wordIsStock and currentStock!='':
+                if word in positiveVocabularyList:
+                    stockcodeToSentiment[currentStock] += 1
+                elif word in negativeVocabularyList:
+                    stockcodeToSentiment[currentStock] -= 1
+
                 print('compute the sentiment and add it to the stock\'s sentiment')
+
+        print(accumulatedNonStockSentiment)
+        print(stockcodeToSentiment)
 
     @staticmethod
     def make_car_sound():
