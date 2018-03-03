@@ -25,6 +25,7 @@ import numpy as np
 import calendar
 import matplotlib.ticker
 import jieba
+from operator import itemgetter
 # from pylab import mpl
 #
 # mpl.rcParams['font.sans-serif'] = ['SimHei'] #將預設字體改用SimHei字體
@@ -1020,7 +1021,7 @@ class stockClass(object):
                     while True:
                             try:
                                 print((oneUrl,authorName,title,content,timeStamp))
-                                cur.execute(sql,((oneUrl,authorName,title,content,timeStamp)))
+                                cur.execute(sql,((oneUrl+'?main',authorName,title,content,timeStamp)))
                                 # cur.close()
                                 conn.commit()
                                 # conn.close()
@@ -1180,6 +1181,77 @@ class stockClass(object):
 
         print(accumulatedNonStockSentiment)
         print(stockcodeToSentiment)
+
+    def getChineseCharacter(self,input):
+        chCharacters = ''
+        for n in re.findall('[\u4e00-\u9fff]+', input):
+            chCharacters += n
+
+        return chCharacters
+
+    def listToNGram(self,inputList, ngram):
+        return [inputList[i:i + ngram] for i in range(0, len(inputList) - ngram + 1)]
+
+    def listToFreqdict(self,inputList):
+        outputDict = dict()
+        for i in range(len(inputList)):
+            # outputDict[tuple(inputList[i])] = outputDict.get(tuple(inputList[i]), 0) + 1
+            outputDict[''.join(inputList[i])] = outputDict.get(''.join(inputList[i]), 0) + 1
+        chfreqsorted = sorted(outputDict.items(), key=itemgetter(1), reverse=True)
+        toJson = '{'
+        for oneItem in chfreqsorted:
+            toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(oneItem[1]) + ','
+        toJson = toJson.rstrip(',')
+        toJson += '}'
+
+        # return chfreqsorted
+        return toJson
+
+    def computeNGramfreq(self,dummy):
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cursor = conn.cursor()
+        ngramArray = []
+
+        try:
+            # Execute the SQL command
+            cursor.execute("SELECT sid,stockNCContent FROM stocknewscomments WHERE stockNC2gramfreq=''")
+            # Fetch all the rows in a list of lists.
+            results = cursor.fetchall()
+            counter = 0
+            for row in results:
+                counter += 1
+                chCharacters = self.getChineseCharacter(row[1])
+                chlist = [ch for ch in chCharacters]
+
+                twoGramDict = self.listToFreqdict( self.listToNGram(chlist,2) )
+                threeGramDict = self.listToFreqdict( self.listToNGram(chlist, 3) )
+                fourGramDict = self.listToFreqdict( self.listToNGram(chlist, 4) )
+
+                ngramArray.append((str(twoGramDict),str(threeGramDict),str(fourGramDict),row[0]))
+
+                # print(row[0])
+                # print(twoGramDict)
+                # print(threeGramDict)
+                # print(fourGramDict)
+
+                while counter >= 100:
+                    try:
+                        sql = "UPDATE stocknewscomments SET stockNC2gramfreq=%s,stockNC3gramfreq=%s,stockNC4gramfreq=%s WHERE sid=%s"
+                        # print(ngramArray)
+                        cursor.executemany(sql, ngramArray)
+                        conn.commit()
+                        counter = 0
+                        ngramArray = []
+                        break
+                    except:
+                        print("Unexpected error:", sys.exc_info())
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+        cursor.close()
+        conn.close()
 
     @staticmethod
     def make_car_sound():

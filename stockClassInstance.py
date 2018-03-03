@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	# stockInstance.getStockInfo()
 
 	##############################################
-	noMultiThread = ['getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex', 'getPttStockNewsComments','computeStockSentiment']
+	noMultiThread = ['getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex', 'getPttStockNewsComments','computeStockSentiment','computeNGramfreq']
 
 	if len(sys.argv) < 2:
 		print("The first parameter must be the function you want to call.")
@@ -36,7 +36,8 @@ if __name__ == "__main__":
 			'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex,
 			'computeStockMA': stockInstance.computeStockMA,
 			'getPttStockNewsComments': stockInstance.getPttStockNewsComments,
-			'computeStockSentiment': stockInstance.computeStockSentiment
+			'computeStockSentiment': stockInstance.computeStockSentiment,
+			'computeNGramfreq': stockInstance.computeNGramfreq
 		}
 
 		if str(sys.argv[1]) not in funcDict.keys():
@@ -44,7 +45,7 @@ if __name__ == "__main__":
 			exit(1)
 
 		functionCall = funcDict[str(sys.argv[1])]
-		parameter = ""
+		parameter = None
 		if len(sys.argv)==3:
 			parameter = str(sys.argv[2])
 
