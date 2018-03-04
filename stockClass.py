@@ -1136,7 +1136,7 @@ class stockClass(object):
         negativeVocabularyList = self.getVocabulary('stocknegativevocabulary')
 
         jieba.set_dictionary('jieba/dict.txt.big')
-        content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
+        # content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
 
         stockNameToCode = self.getStockNameToCode()
         # Add phrases to jieba
