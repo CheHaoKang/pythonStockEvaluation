@@ -1081,15 +1081,15 @@ class stockClass(object):
             # Execute the SQL command
             conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
-            cursor.execute("SELECT stockCode,TRIM(TRAILING ';' FROM CONCAT_WS(';',stockName,stockOthername)) AS stockAllnames FROM stocktable")
+            cursor.execute("SELECT stockCode,TRIM(TRAILING ';' FROM CONCAT_WS(';',stockName,stockOthername)) AS stockAllnames,stockName FROM stocktable")
             # Fetch all the rows in a list of lists.
             results = cursor.fetchall()
             for row in results:
-                stockNameToCode[row[0]] = row[0]
+                stockNameToCode[row[0]] = row[2]
                 for stockName in row[1].split(';'):
-                    stockNameToCode[stockName] = row[0]
+                    stockNameToCode[stockName] = row[2]
 
-            print(stockNameToCode)
+            # print(stockNameToCode)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1110,7 +1110,7 @@ class stockClass(object):
                 for vocabulary in row[0].split(';'):
                     vocabularyList.append(vocabulary)
 
-            print(vocabularyList)
+            # print(vocabularyList)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1131,37 +1131,35 @@ class stockClass(object):
             n.append(num)
         return ''.join(n)
 
-    def computeStockSentiment(self,dummy):
+    def computeStockSentiment(self,content):
         positiveVocabularyList = self.getVocabulary('stockpositivevocabulary')
         negativeVocabularyList = self.getVocabulary('stocknegativevocabulary')
 
         jieba.set_dictionary('jieba/dict.txt.big')
         content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
 
-        # print("Input：", self.FullToHalf(content))
-
-        words = jieba.cut(self.FullToHalf(content), cut_all=False)
-
         stockNameToCode = self.getStockNameToCode()
         # Add phrases to jieba
         for stockName in stockNameToCode:
             jieba.suggest_freq(stockName, True)
+        words = jieba.cut(self.FullToHalf(content), cut_all=False)
 
         currentStock = '' # remember which stock the comment points to
         accumulatedNonStockSentiment = 0 # if no stock is identified yet, sum sentiments here
         stockcodeToSentiment = dict()
+        stockNameCounter = dict()
         for word in words:
             wordIsStock = False
             for stockName in stockNameToCode:
                 if stockName in word:
                     wordIsStock = True
                     currentStock = stockNameToCode[stockName]
+                    stockNameCounter[currentStock] = stockNameCounter.get(currentStock, 0) + 1
 
                     if currentStock not in stockcodeToSentiment:
                         stockcodeToSentiment[currentStock] = 0
 
-                    print(stockName, stockNameToCode[stockName], word)
-
+                    # print(stockName, stockNameToCode[stockName], word)
                     break
 
             if not wordIsStock and currentStock=='':
@@ -1170,17 +1168,36 @@ class stockClass(object):
                 elif word in negativeVocabularyList:
                     accumulatedNonStockSentiment -= 1
 
-                print('compute the sentiment and add it to accumulatedNonStockSentiment')
+                # print('compute the sentiment and add it to accumulatedNonStockSentiment')
             elif not wordIsStock and currentStock!='':
                 if word in positiveVocabularyList:
                     stockcodeToSentiment[currentStock] += 1
                 elif word in negativeVocabularyList:
                     stockcodeToSentiment[currentStock] -= 1
 
-                print('compute the sentiment and add it to the stock\'s sentiment')
+                # print('compute the sentiment and add it to the stock\'s sentiment')
 
-        print(accumulatedNonStockSentiment)
-        print(stockcodeToSentiment)
+        # add the unknown sentiment to the most frequently-mentioned stock
+        stockCounterSorted = sorted(stockNameCounter.items(), key=itemgetter(1), reverse=True)
+        for oneItem in stockcodeToSentiment:
+            if oneItem==stockCounterSorted[0][0]:
+                stockcodeToSentiment[oneItem] = int(stockcodeToSentiment[oneItem])+int(accumulatedNonStockSentiment)
+                break
+
+        sentimentSorted = sorted(stockcodeToSentiment.items(), key=itemgetter(1), reverse=True)
+        highest = True
+        toJson = '{'
+        for oneItem in sentimentSorted:
+            # if highest:
+            #     toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(int(oneItem[1])+int(accumulatedNonStockSentiment)) + ','
+            #     highest = False
+            # else:
+            toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(oneItem[1]) + ','
+        toJson = toJson.rstrip(',')
+        toJson += '}'
+
+        print(toJson)
+        return toJson
 
     def getChineseCharacter(self,input):
         chCharacters = ''
@@ -1223,20 +1240,17 @@ class stockClass(object):
                 chCharacters = self.getChineseCharacter(row[1])
                 chlist = [ch for ch in chCharacters]
 
+                stockSentiment = self.computeStockSentiment(row[1])
                 twoGramDict = self.listToFreqdict( self.listToNGram(chlist,2) )
                 threeGramDict = self.listToFreqdict( self.listToNGram(chlist, 3) )
                 fourGramDict = self.listToFreqdict( self.listToNGram(chlist, 4) )
 
-                ngramArray.append((str(twoGramDict),str(threeGramDict),str(fourGramDict),row[0]))
-
-                # print(row[0])
-                # print(twoGramDict)
-                # print(threeGramDict)
-                # print(fourGramDict)
+                # print(stockSentiment,twoGramDict,threeGramDict,fourGramDict)
+                ngramArray.append((str(stockSentiment),str(twoGramDict),str(threeGramDict),str(fourGramDict),row[0]))
 
                 while counter >= 100:
                     try:
-                        sql = "UPDATE stocknewscomments SET stockNC2gramfreq=%s,stockNC3gramfreq=%s,stockNC4gramfreq=%s WHERE sid=%s"
+                        sql = "UPDATE stocknewscomments SET stockNCSentiment=%s,stockNC2gramfreq=%s,stockNC3gramfreq=%s,stockNC4gramfreq=%s WHERE sid=%s"
                         # print(ngramArray)
                         cursor.executemany(sql, ngramArray)
                         conn.commit()
@@ -1249,6 +1263,19 @@ class stockClass(object):
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
+
+        # update remaining data
+        while True:
+            try:
+                sql = "UPDATE stocknewscomments SET stockNCSentiment=%s,stockNC2gramfreq=%s,stockNC3gramfreq=%s,stockNC4gramfreq=%s WHERE sid=%s"
+                # print(ngramArray)
+                cursor.executemany(sql, ngramArray)
+                conn.commit()
+                counter = 0
+                ngramArray = []
+                break
+            except:
+                print("Unexpected error:", sys.exc_info())
 
         cursor.close()
         conn.close()
