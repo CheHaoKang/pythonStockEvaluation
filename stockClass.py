@@ -1131,12 +1131,33 @@ class stockClass(object):
             n.append(num)
         return ''.join(n)
 
-    def computeStockSentiment(self,content):
-        positiveVocabularyList = self.getVocabulary('stockpositivevocabulary')
-        negativeVocabularyList = self.getVocabulary('stocknegativevocabulary')
-
+    def computeStockSentiment(self,content,stockUrl):
         jieba.set_dictionary('jieba/dict.txt.big')
         # content = open('jieba/newsComment.txt', 'r', encoding="utf-8").read()
+        # stockUrl = 'https://www.ptt.cc/bbs/Stock/M.1520011815.A.6B1.html'
+        mainSentiment = None
+
+        # Also get the main news to append it to the current one if not finished computing sentiments yet
+        if 'main' not in stockUrl:
+            try:
+                # Execute the SQL command
+                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cursor = conn.cursor()
+                cursor.execute("SELECT stockNCContent,stockNCSentiment FROM stocknewscomments WHERE stockNCUrl LIKE '%" + stockUrl + "?main%'")
+                # Fetch all the rows in a list of lists.
+                results = cursor.fetchall()
+                for row in results:
+                    if row[1]=='':
+                        content += row[0]
+                    else:
+                        mainSentiment = json.loads(row[1])
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+
+        positiveVocabularyList = self.getVocabulary('stockpositivevocabulary')
+        negativeVocabularyList = self.getVocabulary('stocknegativevocabulary')
 
         stockNameToCode = self.getStockNameToCode()
         # Add phrases to jieba
@@ -1184,15 +1205,19 @@ class stockClass(object):
                 stockcodeToSentiment[oneItem] = int(stockcodeToSentiment[oneItem])+int(accumulatedNonStockSentiment)
                 break
 
+        # add the sentiment of the main news to the current one
+        if mainSentiment:
+            for stock in mainSentiment:
+                stockcodeToSentiment[stock] = stockcodeToSentiment.get(stock, mainSentiment[stock]) + mainSentiment[stock]
+
         sentimentSorted = sorted(stockcodeToSentiment.items(), key=itemgetter(1), reverse=True)
-        highest = True
         toJson = '{'
         for oneItem in sentimentSorted:
             # if highest:
             #     toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(int(oneItem[1])+int(accumulatedNonStockSentiment)) + ','
             #     highest = False
             # else:
-            toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(oneItem[1]) + ','
+            toJson += '\"' + str(oneItem[0]) + '\"' + ':' + str(oneItem[1]) + ','
         toJson = toJson.rstrip(',')
         toJson += '}'
 
@@ -1217,7 +1242,7 @@ class stockClass(object):
         chfreqsorted = sorted(outputDict.items(), key=itemgetter(1), reverse=True)
         toJson = '{'
         for oneItem in chfreqsorted:
-            toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(oneItem[1]) + ','
+            toJson += '\"' + str(oneItem[0]) + '\"' + ':' + str(oneItem[1]) + ','
         toJson = toJson.rstrip(',')
         toJson += '}'
 
@@ -1231,7 +1256,7 @@ class stockClass(object):
 
         try:
             # Execute the SQL command
-            cursor.execute("SELECT sid,stockNCContent FROM stocknewscomments WHERE stockNC2gramfreq=''")
+            cursor.execute("SELECT sid,CONCAT_WS('',stockNCTitle,stockNCContent) AS titleContent,stockNCUrl FROM stocknewscomments WHERE stockNC2gramfreq=''")
             # Fetch all the rows in a list of lists.
             results = cursor.fetchall()
             counter = 0
@@ -1240,7 +1265,7 @@ class stockClass(object):
                 chCharacters = self.getChineseCharacter(row[1])
                 chlist = [ch for ch in chCharacters]
 
-                stockSentiment = self.computeStockSentiment(row[1])
+                stockSentiment = self.computeStockSentiment(row[1],row[2])
                 twoGramDict = self.listToFreqdict( self.listToNGram(chlist,2) )
                 threeGramDict = self.listToFreqdict( self.listToNGram(chlist, 3) )
                 fourGramDict = self.listToFreqdict( self.listToNGram(chlist, 4) )
