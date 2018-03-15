@@ -1,4 +1,4 @@
-cd "C:\Program Files\MariaDB 10.2\bin"
+cd /d "D:\Program Files\MariaDB 10.2\bin"
 if not exist "C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp" mkdir C:\\Users\\blueplanet\\PycharmProjects\\SQLBackUp
 
 forfiles /p "C:\Users\blueplanet\PycharmProjects\SQLBackUp" /s /m *.* /D -7 /C "cmd /c del @file"

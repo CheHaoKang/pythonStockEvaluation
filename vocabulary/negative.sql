@@ -1,0 +1,158 @@
+-- --------------------------------------------------------
+-- Host:                         127.0.0.1
+-- Server version:               10.2.11-MariaDB - mariadb.org binary distribution
+-- Server OS:                    Win64
+-- HeidiSQL Version:             9.4.0.5125
+-- --------------------------------------------------------
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+
+
+-- Dumping database structure for stockevaluation
+CREATE DATABASE IF NOT EXISTS `stockevaluation` /*!40100 DEFAULT CHARACTER SET utf8 */;
+USE `stockevaluation`;
+
+-- Dumping structure for table stockevaluation.stocknegativevocabulary
+CREATE TABLE IF NOT EXISTS `stocknegativevocabulary` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `word_trad` varchar(255) NOT NULL DEFAULT '',
+  `word_simp` varchar(255) NOT NULL DEFAULT '',
+  `en` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+-- Dumping data for table stockevaluation.stocknegativevocabulary: ~123 rows (approximately)
+/*!40000 ALTER TABLE `stocknegativevocabulary` DISABLE KEYS */;
+INSERT IGNORE INTO `stocknegativevocabulary` (`id`, `word_trad`, `word_simp`, `en`) VALUES
+	(1, '虧', '亏', 'lose money'),
+	(2, '貶', '贬', 'go down'),
+	(3, '跌', '跌', 'go down'),
+	(4, '減', '减', 'decrease'),
+	(5, '損', '损', 'lose money'),
+	(6, '套', '套', 'trapped'),
+	(7, '熊', '熊', 'bear market'),
+	(8, '空頭', '空头', 'bear market'),
+	(9, '做空', '做空', 'short'),
+	(10, '放空', '放空', 'short'),
+	(11, '利空', '利空', 'no incentives'),
+	(12, '短空', '短空', 'lose money in a short period of time'),
+	(13, '長空', '长空', 'lose money in a long period of time'),
+	(14, '多殺多', '多杀多', 'upward crash'),
+	(15, '疲', '疲', 'weak'),
+	(16, '軟', '软', 'weak'),
+	(17, '售', '售', 'sell'),
+	(18, '賣', '卖', 'sell'),
+	(19, '拋', '抛', 'sell'),
+	(20, '跳水', '跳水', 'plummet'),
+	(21, '下', '下', 'go down'),
+	(22, '弱', '弱', 'weak'),
+	(23, '低', '低', 'low'),
+	(24, '賠', '赔', 'lose money'),
+	(25, '崩', '崩', 'crack down'),
+	(26, '虛', '虚', 'weak'),
+	(27, '坑', '坑', 'trap'),
+	(28, '債', '债', 'debt'),
+	(29, '泡沫', '泡沫', 'burst of stock bubbles'),
+	(30, '負', '负', 'lose'),
+	(31, '輸', '输', 'lose'),
+	(32, '割', '割', 'sell'),
+	(33, '劣', '劣', 'bad'),
+	(34, '挫', '挫', 'go down'),
+	(35, '落', '落', 'go down'),
+	(36, '欠', '欠', 'debt'),
+	(37, '惡', '恶', 'bad'),
+	(38, '壞', '坏', 'bad'),
+	(39, '違', '违', 'violate'),
+	(40, '逆', '逆', 'violate'),
+	(41, '砸', '砸', 'destroy'),
+	(42, '降', '降', 'go down'),
+	(43, '陷', '陷', 'trapped'),
+	(44, '底', '底', 'bottom'),
+	(45, '潰', '溃', 'crack down'),
+	(46, '殺', '杀', 'kill'),
+	(47, '冷', '冷', 'cold'),
+	(48, '綠', '绿', 'green/go down'),
+	(49, '滑', '滑', 'go down'),
+	(50, '阻', '阻', 'block'),
+	(51, '錯', '错', 'wrong'),
+	(52, '斬', '斩', 'cut'),
+	(53, '乏', '乏', 'lack'),
+	(54, '亂', '乱', 'messy'),
+	(55, '災', '灾', 'disaster'),
+	(56, '撤', '撤', 'retreat'),
+	(57, '差', '差', 'bad'),
+	(58, '減倉', '减仓', 'sell'),
+	(59, '清倉', '清仓', 'sell all stocks'),
+	(60, '流失', '流失', 'lose'),
+	(61, '跑', '跑', 'leave'),
+	(62, '離', '离', 'leave'),
+	(63, '倒', '倒', 'fall down'),
+	(64, '恐', '恐', 'afraid'),
+	(65, '慌', '慌', 'scared'),
+	(66, '萎', '萎', 'decrease'),
+	(67, '腰', '腰', 'cut'),
+	(68, '悲', '悲', 'sad'),
+	(69, '遭', '遭', 'encounter bad things'),
+	(70, '殃', '殃', 'encounter bad things'),
+	(71, '罵', '骂', 'scold'),
+	(72, '水漂', '水漂', 'disappear'),
+	(73, '縮', '缩', 'decrease'),
+	(74, '不祥', '不祥', 'bad sign'),
+	(75, '兇', '凶', 'bad sign'),
+	(76, '黑', '黑', 'go down'),
+	(77, '否', '否', 'bad'),
+	(78, '衰', '衰', 'bad'),
+	(79, '死', '死', 'dead'),
+	(80, '廢', '废', 'abandon'),
+	(81, '空倉', '空仓', 'move out all money'),
+	(82, '破淨', '破淨', 'the market price of one stock is lower than its ne'),
+	(83, '苦', '苦', 'bad'),
+	(84, '惱', '恼', 'agonized'),
+	(85, '懼', '惧', 'afraid'),
+	(86, '婪', '婪', 'greedy'),
+	(87, '打臉', '打脸', 'wrong'),
+	(88, '警', '警', 'alarm'),
+	(89, '罰', '罚', 'fine'),
+	(90, '停', '停', 'stop'),
+	(91, '耐心', '耐心', 'patience'),
+	(92, '耐性', '耐性', 'patience'),
+	(93, '休息', '休息', 'rest'),
+	(94, '留意', '留意', 'careful'),
+	(95, '風險', '风险', 'risk'),
+	(96, '不確', '不确', 'not sure'),
+	(97, '空', '空', 'short'),
+	(98, '退', '退', 'fall back'),
+	(99, '逃', '逃', 'escape'),
+	(100, '奢', '奢', 'greedy'),
+	(101, '慎', '慎', 'careful'),
+	(102, '悶', '闷', 'bad mood'),
+	(103, '拉下', '拉下', 'descend'),
+	(104, '不好', '不好', 'bad'),
+	(105, '不行', '不行', 'not working'),
+	(106, '瀉', '泻', 'plummet'),
+	(107, '困', '困', 'difficulty'),
+	(108, '畏', '畏', 'afraid'),
+	(109, '脆', '脆', 'weak'),
+	(110, '蠢', '蠢', 'stupid'),
+	(111, '醜', '丑', 'ugly'),
+	(112, '破產', '破产', 'bankruptcy'),
+	(113, '熬', '熬', 'tough time'),
+	(114, '遺憾', '遗憾', 'pity'),
+	(115, '高估', '高估', 'overestimate'),
+	(116, '錯誤', '错误', 'error'),
+	(117, '壓力', '压力', 'pressure'),
+	(118, '風險高', '风险高', 'high risk'),
+	(119, '逾', '逾', 'expire'),
+	(120, '品質低', '品质低', 'low quality'),
+	(121, '胖', '胖', 'fat'),
+	(122, '屎', '屎', 'shit'),
+	(123, '辭職', '辞职', 'resign');
+/*!40000 ALTER TABLE `stocknegativevocabulary` ENABLE KEYS */;
+
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
