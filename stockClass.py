@@ -1256,7 +1256,8 @@ class stockClass(object):
 
         try:
             # Execute the SQL command
-            cursor.execute("SELECT sid,CONCAT_WS('',stockNCTitle,stockNCContent) AS titleContent,stockNCUrl FROM stocknewscomments WHERE stockNC2gramfreq=''")
+            # cursor.execute("SELECT sid,CONCAT_WS('',stockNCTitle,stockNCContent) AS titleContent,stockNCUrl FROM stocknewscomments WHERE stockNC2gramfreq=''")
+            cursor.execute("SELECT sid,stockNCContent,stockNCUrl FROM stocknewscomments WHERE stockNC2gramfreq=''")
             # Fetch all the rows in a list of lists.
             results = cursor.fetchall()
             counter = 0
@@ -1303,6 +1304,75 @@ class stockClass(object):
                 print("Unexpected error:", sys.exc_info())
 
         cursor.close()
+        conn.close()
+
+    def aggregateGramfreq(self,dummy):
+        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cursor = conn.cursor()
+
+        # get the previous stockHandledCommentid
+        try:
+            # Execute the SQL command
+            cursor.execute("SELECT MAX(stockHandledCommentid) AS stockHandledCommentid FROM stockngramfreq")
+            results = cursor.fetchall()
+            stockHandledCommentid = 0
+            for row in results:
+                if int(row[0]) > 0:
+                    stockHandledCommentid = int(row[0])
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+
+        try:
+            # Execute the SQL command
+            cursor.execute("SELECT sid,stockNC2gramfreq,stockNC3gramfreq,stockNC4gramfreq FROM stocknewscomments WHERE sid > %s AND stockNC2gramfreq <> '' AND stockNC2gramfreq <> '{}'",(stockHandledCommentid))
+            # Fetch all the rows in a list of lists.
+            results = cursor.fetchall()
+            gramsDict = {2:{},3:{},4:{}}
+            maxSid = -1
+            for row in results:
+                if int(row[0]) > maxSid:
+                    maxSid = int(row[0])
+
+                for gramNum in range(2,5):
+                    gramJson = json.loads(row[gramNum-1])
+
+                    for key in gramJson:
+                        gramsDict[gramNum][key] = gramsDict[gramNum].get(key,0) + 1
+
+            # sort, convert to json and insert into stockngramfreq
+            gramsJsonDict = {2: '', 3: '', 4: ''}
+            for gramNum in range(2,5):
+                gramSorted = sorted(gramsDict[gramNum].items(), key=itemgetter(1), reverse=True)
+                gramToJson = '{'
+                for oneItem in gramSorted:
+                    # if highest:
+                    #     toJson += '\'' + str(oneItem[0]) + '\'' + ':' + str(int(oneItem[1])+int(accumulatedNonStockSentiment)) + ','
+                    #     highest = False
+                    # else:
+                    gramToJson += '\"' + str(oneItem[0]) + '\"' + ':' + str(oneItem[1]) + ','
+                gramToJson = gramToJson.rstrip(',')
+                gramToJson += '}'
+
+                gramsJsonDict[gramNum] = gramToJson
+                print(gramsJsonDict[gramNum])
+
+                # print(sorted(gramsDict[2].items(), key=itemgetter(1), reverse=True))
+                # print(sorted(gramsDict[3].items(), key=itemgetter(1), reverse=True))
+                # print(sorted(gramsDict[4].items(), key=itemgetter(1), reverse=True))
+
+            insert = "INSERT IGNORE INTO stockngramfreq (stock2Gram, stock3Gram, stock4Gram, stockHandledCommentid) VALUES (%s, %s, %s, %s)"
+            cursor.execute(insert, (gramsJsonDict[2], gramsJsonDict[3], gramsJsonDict[4], maxSid))
+
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+        cursor.close()
+        conn.commit()
         conn.close()
 
     @staticmethod
