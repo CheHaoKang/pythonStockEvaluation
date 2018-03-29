@@ -280,7 +280,8 @@ class stockClass(object):
 
                     date = str(year) + str(month).zfill(2) + '01'
 
-                    url_twse = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY_AVG?response=json&date=' + date + '&stockNo=' + stock
+                    # url_twse = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY_AVG?response=json&date=' + date + '&stockNo=' + stock
+                    url_twse = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=' + date + '&stockNo=' + stock
                     print(url_twse)
 
                     succeed = False
@@ -331,13 +332,16 @@ class stockClass(object):
                                     splitDate[0] = str(int(splitDate[0]) + 1911)
                                     splitDate = '-'.join(splitDate)
 
-                                    if not (data[1].isdigit() or data[1].replace('.', '', 1).isdigit()):
+                                    # if not (data[1].isdigit() or data[1].replace('.', '', 1).isdigit()):
+                                    if not (data[6].isdigit() or data[6].replace('.', '', 1).isdigit()):
                                         continue
 
                                     if fetchDate != "" and splitDate.replace('-', '') == fetchDate:
-                                        stockDataArray.append((stock, splitDate, data[1]))
+                                        # stockDataArray.append((stock, splitDate, data[1]))
+                                        stockDataArray.append((stock, splitDate, data[6], data[1]))
                                     elif fetchDate == "":
-                                        stockDataArray.append((stock, splitDate, data[1]))
+                                        # stockDataArray.append((stock, splitDate, data[1]))
+                                        stockDataArray.append((stock, splitDate, data[6], data[1]))
 
                             print(stockDataArray)
                             # succeed = True
@@ -346,7 +350,7 @@ class stockClass(object):
                                 try:
                                     conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                                     cur = conn.cursor()
-                                    insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex) VALUES (%s, %s, %s)"
+                                    insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
                                     cur.executemany(insert, stockDataArray)
                                     cur.close()
                                     conn.commit()
@@ -650,8 +654,8 @@ class stockClass(object):
         # sqlGetLastDays14 = 'SELECT stockcode,stockdate,stockindex,stockK,stockD FROM stockdata WHERE stockcode=%s ORDER BY stockdate DESC LIMIT 7'
         # sqlGetLastSevenDaysInvest = 'SELECT stockcode,stockdate,SUM(stockAmount) FROM stockinstitutionalinvestor WHERE stockcode=%s GROUP BY stockdate ORDER BY stockdate DESC LIMIT 7'
         sqlGetLastDays14 = """
-            SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA,stockindices.stockMA18,stockindices.stockMA50 FROM
-                (SELECT stockcode,stockdate,stockindex,stockK,stockD,stockMA18,stockMA50 FROM stockdata WHERE stockcode=%s 
+            SELECT stockindices.stockcode,stockindices.stockdate,stockindices.stockindex,stockindices.stockK,stockindices.stockD,sumSA.sSA,stockindices.stockMA18,stockindices.stockMA50,stockindices.stockVolume FROM
+                (SELECT stockcode,stockdate,stockindex,stockK,stockD,stockMA18,stockMA50,stockVolume FROM stockdata WHERE stockcode=%s 
                 ORDER BY stockdate DESC LIMIT 14
                 ) stockindices LEFT JOIN (
                 SELECT stockcode,stockdate,SUM(stockAmount) AS sSA FROM stockinstitutionalinvestor WHERE stockcode=%s 
@@ -674,7 +678,8 @@ class stockClass(object):
                             if results:
                                 stockCodeIndices[stock] = []
                                 for row in results:
-                                    stockCodeIndices[stock].append([str(row[1]), row[2], row[6], row[7], row[3], row[4], row[5]])
+                                    volume = int(re.sub(r"[^\d]", "", row[8])) if len(re.sub(r"[^\d]", "", row[8])) > 0 else 0
+                                    stockCodeIndices[stock].append([str(row[1]), row[2], row[6], row[7], row[3], row[4], row[5], volume])
                                     #stockcode=>stockdate,stockindex,stockMA18,stockMA50,stockK,stockD,amount
                                 stockCodeIndices[stock].append([str(stockCodeDateLowestindex[stock][0]+'(LOWEST)'), stockCodeDateLowestindex[stock][1], stockCodeDateLowestindex[stock][2], stockCodeDateLowestindex[stock][3], stockCodeDateLowestindex[stock][4], stockCodeDateLowestindex[stock][5]])
                             break
@@ -1017,6 +1022,16 @@ class stockClass(object):
                         content = content.strip()
 
                     #main post
+                    phraseRemoved = []
+                    try:
+                        cur.execute('SELECT phraseRemoved FROM stockphraseremoved')
+                        results = cur.fetchall()
+                        for row in results:
+                            phraseRemoved.append(row[0])
+                            content = content.replace(row[0],'')
+                    except:
+                        print("Unexpected error:", sys.exc_info())
+
                     insertNewsCommentsArray.append((oneUrl,authorName,title,content,timeStamp))
                     while True:
                             try:
@@ -1048,6 +1063,8 @@ class stockClass(object):
                         while True:
                             try:
                                 print((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
+                                for phrase in phraseRemoved:
+                                    comment = comment.replace(phrase, '')
                                 cur.execute(sql,(oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
                                 # cur.close()
                                 conn.commit()
@@ -1313,12 +1330,18 @@ class stockClass(object):
         # get the previous stockHandledCommentid
         try:
             # Execute the SQL command
-            cursor.execute("SELECT MAX(stockHandledCommentid) AS stockHandledCommentid FROM stockngramfreq")
+            cursor.execute("SELECT stockHandledCommentid,stock2Gram,stock3Gram,stock4Gram FROM stockngramfreq ORDER BY stockHandledCommentid DESC LIMIT 1")
             results = cursor.fetchall()
             stockHandledCommentid = 0
+            gramsDict = {2: {}, 3: {}, 4: {}}
             for row in results:
                 if int(row[0]) > 0:
                     stockHandledCommentid = int(row[0])
+
+                    for gramNum in range(2, 5):
+                        gramJson = json.loads(row[gramNum - 1])
+                        for key in gramJson:
+                            gramsDict[gramNum][key] = gramJson[key]
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1330,7 +1353,7 @@ class stockClass(object):
             cursor.execute("SELECT sid,stockNC2gramfreq,stockNC3gramfreq,stockNC4gramfreq FROM stocknewscomments WHERE sid > %s AND stockNC2gramfreq <> '' AND stockNC2gramfreq <> '{}'",(stockHandledCommentid))
             # Fetch all the rows in a list of lists.
             results = cursor.fetchall()
-            gramsDict = {2:{},3:{},4:{}}
+            # gramsDict = {2:{},3:{},4:{}}
             maxSid = -1
             for row in results:
                 if int(row[0]) > maxSid:
@@ -1340,7 +1363,7 @@ class stockClass(object):
                     gramJson = json.loads(row[gramNum-1])
 
                     for key in gramJson:
-                        gramsDict[gramNum][key] = gramsDict[gramNum].get(key,0) + 1
+                        gramsDict[gramNum][key] = gramsDict[gramNum].get(key,0) + int(gramJson[key])
 
             # sort, convert to json and insert into stockngramfreq
             gramsJsonDict = {2: '', 3: '', 4: ''}
@@ -1363,9 +1386,10 @@ class stockClass(object):
                 # print(sorted(gramsDict[3].items(), key=itemgetter(1), reverse=True))
                 # print(sorted(gramsDict[4].items(), key=itemgetter(1), reverse=True))
 
+            cursor.execute('TRUNCATE TABLE stockngramfreq')
+            print(maxSid)
             insert = "INSERT IGNORE INTO stockngramfreq (stock2Gram, stock3Gram, stock4Gram, stockHandledCommentid) VALUES (%s, %s, %s, %s)"
             cursor.execute(insert, (gramsJsonDict[2], gramsJsonDict[3], gramsJsonDict[4], maxSid))
-
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
