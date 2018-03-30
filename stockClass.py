@@ -665,7 +665,7 @@ class stockClass(object):
         conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
-        whiteList = ['2634','2722','3057','3356','4141','5519','5706','8072','8429']
+        whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
@@ -822,7 +822,7 @@ class stockClass(object):
         x = np.asarray(x) # since zip doesn't accept list
 
         first = True
-        # qualifiedStocks = ['9103','9928','911868']
+        # qualifiedStocks = ['0050','9928','911868']
         for stock in qualifiedStocks:
             plt.rcParams["figure.figsize"] = [12, 6]    # set figure size to enlarge the plot. Remember to do >>> \includegraphics[width=1.0\textwidth] <<<
             fig, (subplot1, subplot2) = plt.subplots(2, 1,gridspec_kw = {'height_ratios':[5, 1]})#)
@@ -836,19 +836,36 @@ class stockClass(object):
             stockInfoDict['k'] = []
             stockInfoDict['d'] = []
             stockInfoDict['amount'] = []
+            stockInfoDict['dailyAmount'] = []
             for oneRow in stockCodeIndices[stock]:
+                # print(oneRow)
                 stockInfoDict['date'].append(oneRow[0])
+                # print('111')
                 stockInfoDict['index'].append(oneRow[1])
+                # print('222')
                 stockInfoDict['ma18'].append(oneRow[2])
+                # print('333')
                 stockInfoDict['ma50'].append(oneRow[3])
+                # print('444')
                 stockInfoDict['k'].append(oneRow[4])
+                # print('555')
                 stockInfoDict['d'].append(oneRow[5])
+                # print('666')
                 try:
                     stockInfoDict['amount'].append(oneRow[6]) if oneRow[6] else stockInfoDict['amount'].append(0)
-                except:
-                    print("Unexpected error:", sys.exc_info())
+                except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
 
-            print(stockInfoDict)
+                try:
+                    stockInfoDict['dailyAmount'].append(oneRow[7])
+                except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+
+            # print(stockInfoDict)
 
             xtickLabels = stockInfoDict['date'][::-1][1:] # remove the lowest info
             lowestIndex = stockInfoDict['index'][-1]
@@ -858,8 +875,9 @@ class stockClass(object):
             stockInfoDict['k'] = stockInfoDict['k'][::-1][1:] # remove the lowest info
             stockInfoDict['d'] = stockInfoDict['d'][::-1][1:] # remove the lowest info
             stockInfoDict['amount'] = stockInfoDict['amount'][::-1]
+            stockInfoDict['dailyAmount'] = stockInfoDict['dailyAmount'][::-1]
 
-            print(stockInfoDict)
+            # print(stockInfoDict)
 
             plt.setp(subplot1, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1])#, ylabel='score')
             # plt.xticks(rotation=10)
@@ -886,18 +904,33 @@ class stockClass(object):
                 else:
                     amountColor.append('red')
 
+            dailyAmountColor = []
+            for daiAmIndex in range(len(stockInfoDict['dailyAmount'])):
+                if int(stockInfoDict['dailyAmount'][daiAmIndex]) < 0:
+                    dailyAmountColor.append('green')
+                    stockInfoDict['dailyAmount'][daiAmIndex] = -float(stockInfoDict['dailyAmount'][daiAmIndex])
+                else:
+                    dailyAmountColor.append('red')
+
             print(stockInfoDict['amount'])
+            print(stockInfoDict['dailyAmount'])
 
             width = 0.5
             pLBar = subplot1.twinx()
-            if max(stockInfoDict['amount'])*1.1!=0:
-                maxAmount = max(stockInfoDict['amount'])*1.1
+            if max(stockInfoDict['dailyAmount'])*1.1!=0:
+                maxAmount = max(stockInfoDict['dailyAmount'])*1.1
             else:
                 maxAmount = 10000
             plt.setp(pLBar, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1], ylim=[0, maxAmount])
 
-            pLBar.bar(x, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor, zorder=1)
-            for xCor, yCor in zip(x-width/2, stockInfoDict['amount']):
+            print(stockInfoDict)
+
+            # pLBar.bar(x, stockInfoDict['amount'], width, alpha=0.2, label='amount', color=amountColor, zorder=1)
+            pLBar.bar(x - width / 2, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor, zorder=1)
+            pLBar.bar(x + width / 2, stockInfoDict['dailyAmount'], width, alpha=0.2, label='dailyAmount', color=dailyAmountColor, zorder=1)
+            for xCor, yCor in zip(x-width, stockInfoDict['amount']):
+                pLBar.text(xCor, yCor, str(int(yCor)))
+            for xCor, yCor in zip(x, stockInfoDict['dailyAmount']):
                 pLBar.text(xCor, yCor, str(int(yCor)))
 
             # 'best'         : 0, (only implemented for axis legends)
