@@ -6,15 +6,15 @@ import json
 import csv
 import sys
 import datetime
-from fake_useragent import UserAgent
+# from fake_useragent import UserAgent
 import time
 import threading
 from time import sleep,ctime
-from openpyxl.styles import Font, Color
+# from openpyxl.styles import Font, Color
 from stockClass import *
-from openpyxl import Workbook
+# from openpyxl import Workbook
 from datetime import date
-import jieba
+# import jieba
 import re
 from operator import itemgetter
 
@@ -84,5 +84,14 @@ def getStockNameInfoStartupdate():
     return stockCodeNames
 
 if __name__ == "__main__":
-    for i in range(30):
-        print('201803' + str(i).zfill(2))
+    try:
+        # Execute the SQL command
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM stockdata WHERE stockcode='0050' ORDER BY stockdate")
+        # Fetch all the rows in a list of lists.
+        results = cursor.fetchall()
+        for row in results:
+            print(row)
+    except:
+        print("Error: unable to fecth data")

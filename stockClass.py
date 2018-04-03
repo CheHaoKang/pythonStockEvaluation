@@ -822,7 +822,7 @@ class stockClass(object):
         x = np.asarray(x) # since zip doesn't accept list
 
         first = True
-        # qualifiedStocks = ['0050','9928','911868']
+        # qualifiedStocks = ['0050','5706','9928','911868']
         for stock in qualifiedStocks:
             plt.rcParams["figure.figsize"] = [12, 6]    # set figure size to enlarge the plot. Remember to do >>> \includegraphics[width=1.0\textwidth] <<<
             fig, (subplot1, subplot2) = plt.subplots(2, 1,gridspec_kw = {'height_ratios':[5, 1]})#)
@@ -926,8 +926,8 @@ class stockClass(object):
             print(stockInfoDict)
 
             # pLBar.bar(x, stockInfoDict['amount'], width, alpha=0.2, label='amount', color=amountColor, zorder=1)
-            pLBar.bar(x - width / 2, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor, zorder=1)
-            pLBar.bar(x + width / 2, stockInfoDict['dailyAmount'], width, alpha=0.2, label='dailyAmount', color=dailyAmountColor, zorder=1)
+            pLBar.bar(x - width / 2, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor)#, zorder=1)
+            pLBar.bar(x + width / 2, stockInfoDict['dailyAmount'], width, alpha=0.2, label='dailyAmount', color=dailyAmountColor)#, zorder=1)
             for xCor, yCor in zip(x-width, stockInfoDict['amount']):
                 pLBar.text(xCor, yCor, str(int(yCor)))
             for xCor, yCor in zip(x, stockInfoDict['dailyAmount']):
