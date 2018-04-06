@@ -52,7 +52,7 @@ class stockClass(object):
         sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
         try:
             # Execute the SQL command
-            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
             cursor.execute(sql)
             # Fetch all the rows in a list of lists.
@@ -86,7 +86,7 @@ class stockClass(object):
 
         while True:
             try:
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cur = conn.cursor()
                 sql = """SELECT proxyIPPort FROM (
                     SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
@@ -110,7 +110,7 @@ class stockClass(object):
     def updateProxyInfo(self, proxy, succeedOrFail, executionTime):
         while True:
             try:
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cur = conn.cursor()
                 sql = """UPDATE stockproxies
                     SET proxyAvgReponseperiod=(proxyAvgReponseperiod*proxyUsedTimes+%s)/(proxyUsedTimes+1),
@@ -132,7 +132,7 @@ class stockClass(object):
     def updateStockFinished(self, stock, status):
         while True:
             try:
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cur = conn.cursor()
                 sql = """UPDATE stocktable SET stockFinished=%s WHERE stockcode=%s"""
                 cur.execute(sql, (status, stock))
@@ -226,7 +226,7 @@ class stockClass(object):
         if insInvestArray:  # not empty
             while True:
                 try:
-                    conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                     cur = conn.cursor()
                     insert = "INSERT INTO stockInstitutionalInvestor (stockDate, stockCode, stockInvestorType, stockInvestorTypeDetail, stockAmount) VALUES (%s, %s, %s, %s, %s)"
                     cur.executemany(insert, insInvestArray)
@@ -348,7 +348,7 @@ class stockClass(object):
 
                             if stockDataArray:  # not empty
                                 try:
-                                    conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                                    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                                     cur = conn.cursor()
                                     insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
                                     cur.executemany(insert, stockDataArray)
@@ -374,7 +374,7 @@ class stockClass(object):
     def computeStockKD(self, stockCodes, fromCode, endCode, offset, fetchDate):
         print('#####', fromCode, ctime(), '#####')
 
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
 
         for i in range(fromCode, endCode):
@@ -459,7 +459,7 @@ class stockClass(object):
     def computeStockMA(self, stockCodes, fromCode, endCode, offset, fetchDate):
         print('#####', fromCode, ctime(), '#####')
 
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
 
         for stockI in range(fromCode, endCode):
@@ -533,7 +533,7 @@ class stockClass(object):
         """
         try:
             # Execute the SQL command
-            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
             cursor.execute(sql)
             # Fetch all the rows in a list of lists.
@@ -554,7 +554,7 @@ class stockClass(object):
         stockCodes = self.getStockCodes()
         # stockCodes = ['9962']
 
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cur = conn.cursor()
         sql = "UPDATE stocktable SET stockInfo=%s WHERE stockcode=%s"
 
@@ -608,7 +608,7 @@ class stockClass(object):
         while True:
             try:
                 # Execute the SQL command
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cursor = conn.cursor()
                 cursor.execute(sql)
                 # Fetch all the rows in a list of lists.
@@ -631,7 +631,7 @@ class stockClass(object):
         while True:
             try:
                 # Execute the SQL command
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cursor = conn.cursor()
                 cursor.execute(sql)
                 # Fetch all the rows in a list of lists.
@@ -662,7 +662,7 @@ class stockClass(object):
                 GROUP BY stockdate ORDER BY stockdate DESC LIMIT 14) AS sumSA 
             ON stockindices.stockcode=sumSA.stockcode AND stockindices.stockdate=sumSA.stockdate
         """
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
         whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
@@ -1009,7 +1009,7 @@ class stockClass(object):
 
         # urlList = ['https://www.ptt.cc/bbs/Stock/M.1519884995.A.23D.html']
 
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cur = conn.cursor()
         sql = "INSERT IGNORE INTO stocknewscomments (stockNCUrl,stockNCAuthor,stockNCTitle,stockNCContent,stockNCPosttime) VALUES (%s,%s,%s,%s,%s)"
         insertNewsCommentsArray = []
@@ -1129,7 +1129,7 @@ class stockClass(object):
         stockNameToCode = {}
         try:
             # Execute the SQL command
-            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
             cursor.execute("SELECT stockCode,TRIM(TRAILING ';' FROM CONCAT_WS(';',stockName,stockOthername)) AS stockAllnames,stockName FROM stocktable")
             # Fetch all the rows in a list of lists.
@@ -1151,7 +1151,7 @@ class stockClass(object):
         vocabularyList = list()
         try:
             # Execute the SQL command
-            conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
             cursor = conn.cursor()
             cursor.execute('SELECT GROUP_CONCAT(CONCAT(`word_trad`) SEPARATOR ";") AS positivePhrase FROM ' + tableName)
             # Fetch all the rows in a list of lists.
@@ -1191,7 +1191,7 @@ class stockClass(object):
         if 'main' not in stockUrl:
             try:
                 # Execute the SQL command
-                conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cursor = conn.cursor()
                 cursor.execute("SELECT stockNCContent,stockNCSentiment FROM stocknewscomments WHERE stockNCUrl LIKE '%" + stockUrl + "?main%'")
                 # Fetch all the rows in a list of lists.
@@ -1300,7 +1300,7 @@ class stockClass(object):
         return toJson
 
     def computeNGramfreq(self,dummy):
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         ngramArray = []
 
@@ -1357,7 +1357,7 @@ class stockClass(object):
         conn.close()
 
     def aggregateGramfreq(self,dummy):
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
 
         # get the previous stockHandledCommentid
