@@ -1042,6 +1042,8 @@ class stockClass(object):
                         timeStampSeparate = result[3].text.replace('  ',' ').split(' ') #because the first day of one month takes two spaces (Thu Mar  1 14:16:32 2018). ['Sun', 'Feb', '25', '16:37:51', '2018']
                         # print(result[3].text)
                         # print(timeStampSeparate)
+                        if int(timeStampSeparate[4]) > datetime.datetime.now().year:
+                            timeStampSeparate[4] = str(datetime.datetime.now().year)
                         timeStamp = timeStampSeparate[4] + '-' + monthNumber[timeStampSeparate[1]] + '-' + timeStampSeparate[2].zfill(2) + ' ' + timeStampSeparate[3] #zfill(2) to transform 1 to 01
                     except Exception as e:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -1064,7 +1066,7 @@ class stockClass(object):
                             content = content.replace(row[0],'')
                     except:
                         print("Unexpected error:", sys.exc_info())
-                    content = re.sub(r"\<a.*?\<\/a>", "", content) # remove link texts
+                    content = re.sub(r"\<a.*?\<\/a>", "", content) # remove link texts. re.sub(r"\<a.*?href.*?>|<\/a>", "", content)
 
                     insertNewsCommentsArray.append((oneUrl,authorName,title,content,timeStamp))
                     while True:
