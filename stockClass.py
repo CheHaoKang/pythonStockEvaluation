@@ -1092,7 +1092,10 @@ class stockClass(object):
                         # print(commentTimeStamp)
                         # print(commentTimeStamp+':59')
                         if commentTimeStamp+':59' < timeStamp: # this means the time of the comment is the next year (:59 is to avoid accidentally jumping to the next year)
-                            commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
+                            if int(timeStamp.split('-')[0])+1 > datetime.datetime.now().year:
+                                commentTimeStamp = str(datetime.datetime.now().year) + '-' + commentTimeStampTemp.replace('/','-').strip()
+                            else:
+                                commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
                         # print(pushUserIds[pushedUserIdCounter] + '_' + str(comment) + '_' + str(commentTimeStamp))
                         insertNewsCommentsArray.append((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2))) # add sequential seconds to prevent duplicates
 
