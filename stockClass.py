@@ -1064,6 +1064,7 @@ class stockClass(object):
                             content = content.replace(row[0],'')
                     except:
                         print("Unexpected error:", sys.exc_info())
+                    content = re.sub(r"\<a.*?\<\/a>", "", content) # remove link texts
 
                     insertNewsCommentsArray.append((oneUrl,authorName,title,content,timeStamp))
                     while True:
@@ -1098,6 +1099,7 @@ class stockClass(object):
                                 print((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
                                 for phrase in phraseRemoved:
                                     comment = comment.replace(phrase, '')
+                                comment = re.sub(r"\<a.*?\<\/a>", "", comment)  # remove link texts
                                 cur.execute(sql,(oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2)))
                                 # cur.close()
                                 conn.commit()
