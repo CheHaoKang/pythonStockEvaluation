@@ -979,6 +979,26 @@ class stockClass(object):
         urlList = []
         successfulPages = 0
 
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        cur = conn.cursor()
+        titleRemoved = []
+        try:
+            cur.execute('SELECT phraseRemoved FROM stockphraseremoved WHERE type="title"')
+            results = cur.fetchall()
+            for row in results:
+                titleRemoved.append(row[0])
+        except:
+            print("Unexpected error:", sys.exc_info())
+
+        phraseRemoved = []
+        try:
+            cur.execute('SELECT phraseRemoved FROM stockphraseremoved WHERE type<>"title"')
+            results = cur.fetchall()
+            for row in results:
+                phraseRemoved.append(row[0])
+        except:
+            print("Unexpected error:", sys.exc_info())
+
         while successfulPages < pages:
             try:
                 nowProxy = self.getProxy(0)
@@ -1009,8 +1029,6 @@ class stockClass(object):
 
         # urlList = ['https://www.ptt.cc/bbs/Stock/M.1519884995.A.23D.html']
 
-        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
-        cur = conn.cursor()
         sql = "INSERT IGNORE INTO stocknewscomments (stockNCUrl,stockNCAuthor,stockNCTitle,stockNCContent,stockNCPosttime) VALUES (%s,%s,%s,%s,%s)"
         insertNewsCommentsArray = []
 
@@ -1037,7 +1055,16 @@ class stockClass(object):
                         result = html.xpath('//span[contains(@class,"article-meta-value")]')
                         #[0]=>author name, [1]=>Forum name(Stock), [2]=>title, [3]=>post time
                         authorName = result[0].text.strip().split(' ')[0]
+
                         title = result[2].text.strip()
+                        removed = False
+                        for titleRe in titleRemoved:
+                            if titleRe in title:
+                                removed = True
+                                break
+                        if removed:
+                            break
+
                         monthNumber = dict((v,str(k).zfill(2)) for k,v in enumerate(calendar.month_abbr)) # {'': '00', 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
                         timeStampSeparate = result[3].text.replace('  ',' ').split(' ') #because the first day of one month takes two spaces (Thu Mar  1 14:16:32 2018). ['Sun', 'Feb', '25', '16:37:51', '2018']
                         # print(result[3].text)
@@ -1057,15 +1084,8 @@ class stockClass(object):
                         content = content.strip()
 
                     #main post
-                    phraseRemoved = []
-                    try:
-                        cur.execute('SELECT phraseRemoved FROM stockphraseremoved')
-                        results = cur.fetchall()
-                        for row in results:
-                            phraseRemoved.append(row[0])
-                            content = content.replace(row[0],'')
-                    except:
-                        print("Unexpected error:", sys.exc_info())
+                    for phrase in phraseRemoved:
+                        content = content.replace(phrase,'')
                     content = re.sub(r"\<a.*?\<\/a>", "", content) # remove link texts. re.sub(r"\<a.*?href.*?>|<\/a>", "", content)
 
                     insertNewsCommentsArray.append((oneUrl,authorName,title,content,timeStamp))
