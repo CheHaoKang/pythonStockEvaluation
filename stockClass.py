@@ -1032,6 +1032,7 @@ class stockClass(object):
         sql = "INSERT IGNORE INTO stocknewscomments (stockNCUrl,stockNCAuthor,stockNCTitle,stockNCContent,stockNCPosttime) VALUES (%s,%s,%s,%s,%s)"
         insertNewsCommentsArray = []
 
+        # urlList = ['https://www.ptt.cc/bbs/Stock/M.1524483102.A.34E.html']
         for oneUrl in urlList:
             print(oneUrl)
             while True:
@@ -1102,8 +1103,10 @@ class stockClass(object):
 
                     #pushed comments
                     # reGetComments = re.compile(r'">:(.*?)[\s]*?<.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
-                    reGetComments = re.compile(r'[\/\w\s"=-]+>([\w_=-]+)<[\/\w\s"=-]+><[\w\s"=-]+">:(.*?)[\s]*?<\/span.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
+                    # reGetComments = re.compile(r'[\/\w\s"=-]+>([\w_=-]+).*?<[\/\w\s"=-]+><[\w\s"=-]+">:(.*?)[\s]*?<\/span.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
+                    reGetComments = re.compile(r'userid.*?>([\w_=-]+).*?<[\/\w\s"=-]+><[\w\s"=-]+">:(.*?)[\s]*?<\/span.*?([\d]{2}\/[\d]{2}\s+[\d]{2}:[\d]{2})', re.S|re.UNICODE)
                     pushedUserIdCounter = 0
+                    # print(res.text)
                     for userId,comment,commentTimeStamp in reGetComments.findall(res.text):
                         comment = re.sub(r'<a.*?>', '', comment.strip()).replace('</a>','')
                         commentTimeStampTemp = commentTimeStamp
@@ -1116,7 +1119,7 @@ class stockClass(object):
                                 commentTimeStamp = str(datetime.datetime.now().year) + '-' + commentTimeStampTemp.replace('/','-').strip()
                             else:
                                 commentTimeStamp = str(int(timeStamp.split('-')[0])+1) + '-' + commentTimeStampTemp.replace('/','-').strip()
-                        # print(pushUserIds[pushedUserIdCounter] + '_' + str(comment) + '_' + str(commentTimeStamp))
+                        # print(str(comment) + '_' + str(commentTimeStamp))
                         insertNewsCommentsArray.append((oneUrl,userId,title,comment,commentTimeStamp + ':' + str(pushedUserIdCounter%60).zfill(2))) # add sequential seconds to prevent duplicates
 
                         while True:
