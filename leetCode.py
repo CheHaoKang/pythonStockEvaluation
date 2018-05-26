@@ -200,3 +200,43 @@ def numDecodings(self, s):
     for d in s:
         v, w, p = w, (d>'0')*w + (9<int(p+d)<27)*v, d
     return w
+
+
+# https://leetcode.com/problems/bulls-and-cows/description/
+from collections import Counter
+class Solution:
+    def getHint(self, secret, guess):
+        s, g = Counter(secret), Counter(guess)
+        print(s, g)
+        print(s & g)
+        print((s & g).values())
+        
+        a = sum(i == j for i, j in zip(secret, guess))
+        return '%sA%sB' % (a, sum((s & g).values()) - a)
+        
+
+# https://leetcode.com/problems/wildcard-matching/description/
+# https://leetcode.com/problems/wildcard-matching/discuss/17828/Java-DP-Accepted
+# http://www.cnblogs.com/yuzhangcmu/p/4116153.html
+public class Solution {
+    public boolean isMatch(String s, String p) {
+        int m = s.length(), n = p.length();
+        char[] ws = s.toCharArray();
+        char[] wp = p.toCharArray();
+        boolean[][] dp = new boolean[m+1][n+1];
+        dp[0][0] = true;
+        for (int j = 1; j <= n; j++)
+            dp[0][j] = dp[0][j-1] && wp[j-1] == '*';
+        for (int i = 1; i <= m; i++)
+            dp[i][0] = false;
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (wp[j-1] == '?' || ws[i-1] == wp[j-1])
+                    dp[i][j] = dp[i-1][j-1];
+                else if (wp[j-1] == '*')
+                    dp[i][j] = dp[i-1][j] || dp[i][j-1];
+            }
+        }
+        return dp[m][n];
+    }
+}

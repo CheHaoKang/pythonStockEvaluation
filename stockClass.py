@@ -665,7 +665,8 @@ class stockClass(object):
         conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
         cursor = conn.cursor()
         stockCodeIndices = {}
-        whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
+        # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
+        whiteList = []
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
@@ -721,7 +722,7 @@ class stockClass(object):
             delta = (d1 - d0).days
             for oneRow in stockCodeIndices[stock]:
                 #stockcode=>stockdate,stockindex,stockK,stockD,amount
-                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*3):
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*5):
                     if stock not in whiteList:
                         break
 
@@ -926,8 +927,8 @@ class stockClass(object):
             print(stockInfoDict)
 
             # pLBar.bar(x, stockInfoDict['amount'], width, alpha=0.2, label='amount', color=amountColor, zorder=1)
-            pLBar.bar(x - width / 2, stockInfoDict['amount'], width, alpha = 0.2, label='amount', color=amountColor)#, zorder=1)
-            pLBar.bar(x + width / 2, stockInfoDict['dailyAmount'], width, alpha=0.2, label='dailyAmount', color=dailyAmountColor)#, zorder=1)
+            pLBar.bar(x - width / 2, stockInfoDict['amount'], width-0.1, alpha = 0.2, label='amount', color=amountColor)#, zorder=1)
+            pLBar.bar(x + width / 2, stockInfoDict['dailyAmount'], width-0.1, alpha=0.2, label='dailyAmount', color=dailyAmountColor)#, zorder=1)
             for xCor, yCor in zip(x-width, stockInfoDict['amount']):
                 pLBar.text(xCor, yCor, str(int(yCor)))
             for xCor, yCor in zip(x, stockInfoDict['dailyAmount']):

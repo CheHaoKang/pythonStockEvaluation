@@ -83,18 +83,19 @@ def getStockNameInfoStartupdate():
 
     return stockCodeNames
 
+def extend_list(val, l=[]):
+    print(l)
+    l.append(val)
+    print(l)
+    return l
+
+def test_extend_list():
+    # 1
+    assert extend_list(1) == [1]
+    # 2
+    assert extend_list(2, []) == [2]
+    # 3
+    assert extend_list(3) == [3]
+
 if __name__ == "__main__":
-    try:
-        # Execute the SQL command
-        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
-        cursor = conn.cursor()
-        cursor.execute("INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)", ('0050','1990-01-02',192.1,''))
-        cursor.close()
-        conn.commit()
-        conn.close()
-        # Fetch all the rows in a list of lists.
-        # results = cursor.fetchall()
-        # for row in results:
-        #     print(row)
-    except:
-        print("Error: unable to fecth data")
+    test_extend_list()

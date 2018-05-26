@@ -134,3 +134,33 @@ class Solution:
             head = head.next
         
         return ansList
+
+
+#https://leetcode.com/problems/zigzag-conversion/description/
+class Solution:
+    def convert(self, s, numRows):
+        if numRows==1:
+            return s
+        
+        ans = [[] for i in range(numRows)]
+        # print(ans)
+        
+        onePeriodNum = 2*numRows-2
+        for j in range(0, len(s), onePeriodNum):
+            for i in range(onePeriodNum):
+                if i+j > len(s)-1:
+                    break
+                
+                # print(i, j)
+                
+                if i > numRows-1:
+                    ans[2*numRows-i-2] += [s[i+j]]
+                else:
+                    ans[i] += [s[i+j]]
+            
+        ansStr = ''
+        for oneList in ans:
+            ansStr += ''.join(oneList)
+        # print(ansStr)
+        
+        return ansStr
