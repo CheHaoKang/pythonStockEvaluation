@@ -927,8 +927,8 @@ class stockClass(object):
             print(stockInfoDict)
 
             # pLBar.bar(x, stockInfoDict['amount'], width, alpha=0.2, label='amount', color=amountColor, zorder=1)
-            pLBar.bar(x - width / 2 + 0.1, stockInfoDict['amount'], width-0.1, alpha = 0.2, label='amount', color=amountColor)#, zorder=1)
-            pLBar.bar(x + width / 2 - 0.1, stockInfoDict['dailyAmount'], width-0.1, alpha=0.2, label='dailyAmount', color=dailyAmountColor)#, zorder=1)
+            pLBar.bar(x - width / 2 + 0.1/2, stockInfoDict['amount'], width-0.1, alpha = 0.2, label='amount', color=amountColor)#, zorder=1)
+            pLBar.bar(x + width / 2 - 0.1/2, stockInfoDict['dailyAmount'], width-0.1, alpha=0.2, label='dailyAmount', color=dailyAmountColor)#, zorder=1)
             for xCor, yCor in zip(x-width, stockInfoDict['amount']):
                 pLBar.text(xCor, yCor, str(int(yCor)))
             for xCor, yCor in zip(x, stockInfoDict['dailyAmount']):
