@@ -773,7 +773,7 @@ class stockClass(object):
             d0 = datetime.date(int(stockCodeNames[stock][2].split("-")[0]), int(stockCodeNames[stock][2].split('-')[1]), int(stockCodeNames[stock][2].split('-')[2]))
             delta = (d1 - d0).days
             for oneRow in stockCodeIndices[stock]:
-                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*3):
+                if first and (oneRow[2]>30 or oneRow[3]>30 or re.search('[a-zA-Z]', stock) or delta < 365*5):
                     if stock not in whiteList:
                         break
                     else:
