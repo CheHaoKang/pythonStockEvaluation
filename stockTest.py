@@ -17,6 +17,7 @@ from datetime import date
 # import jieba
 import re
 from operator import itemgetter
+import glob, os
 
 def FullToHalf(s):
     n = []
@@ -98,4 +99,5 @@ def test_extend_list():
     assert extend_list(3) == [3]
 
 if __name__ == "__main__":
-    test_extend_list()
+    for f in glob.glob("stockDrawing_*.png"):
+        print(f)

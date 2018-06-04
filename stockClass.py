@@ -27,6 +27,7 @@ import matplotlib.ticker
 import jieba
 from operator import itemgetter
 # from pylab import mpl
+import glob
 #
 # mpl.rcParams['font.sans-serif'] = ['SimHei'] #將預設字體改用SimHei字體
 
@@ -816,6 +817,9 @@ class stockClass(object):
         stockCodeIndices = copy.deepcopy(stockCodeIndicesBackup)
 
         #*** Draw diagrams
+        for f in glob.glob("stockDrawing_*.png"):
+            os.remove(f)
+
         days = 14
         x = []
         for i in range(1,days+1):
