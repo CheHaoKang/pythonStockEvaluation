@@ -667,7 +667,7 @@ class stockClass(object):
         cursor = conn.cursor()
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
-        whiteList = []
+        whiteList = ['8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
