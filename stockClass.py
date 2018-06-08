@@ -8,7 +8,6 @@ from abc import ABCMeta, abstractmethod
 import requests
 import pymysql.cursors
 import json
-import csv
 import sys,os
 import datetime
 from fake_useragent import UserAgent
@@ -701,6 +700,8 @@ class stockClass(object):
         stockCodeIndicesBackup = copy.deepcopy(stockCodeIndices)
 
         #*** Output to a CSV file
+        for f in glob.glob("potentialStocks\-*\.*"):
+            os.remove(f)
         now = datetime.datetime.now()
         file = open('potentialStocks-'+now.strftime("%Y-%m-%d")+'.csv', 'w', newline='')
         csvCursor = csv.writer(file)
