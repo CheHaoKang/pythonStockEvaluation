@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+import pickle
 import requests
 import pymysql.cursors
 import json
@@ -25,6 +26,7 @@ from keras.models import Sequential
 from keras import layers
 from keras.optimizers import RMSprop
 import matplotlib.pyplot as plt
+from keras.models import load_model
 
 def drawEvaluationDiagram(history):
     loss = history.history['loss']
@@ -48,7 +50,7 @@ def normalizeData(data, train_length):
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
     # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" ORDER BY stockDate ASC'
-    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2006-12-31\' ORDER BY stockDate ASC'
+    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-12-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
@@ -150,6 +152,12 @@ if __name__ == "__main__":
                                   validation_steps=val_steps)
 
     drawEvaluationDiagram(history)
+
+    # with open('trainHistoryDict.pickle', 'wb') as file_pi:
+    #     pickle.dump(history.history, file_pi)
+    model.save('stock_trained.h5')
+    del model
+    model = load_model('stock_trained.h5')
 
     # for one in generator(normalizeStockData, lookback, delay, min_index, max_index, False, batch_size, step):
     #     print(one)
