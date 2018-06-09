@@ -48,7 +48,7 @@ def normalizeData(data, train_length):
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
     # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" ORDER BY stockDate ASC'
-    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-12-31\' ORDER BY stockDate ASC'
+    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2006-12-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
@@ -67,6 +67,9 @@ def getStockData(stockCode):
 def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_size=128, step=1):
     if max_index is None:
         max_index = len(data) - delay - 1
+    else:
+        max_index = max_index - delay
+
     i = min_index + lookback
     while 1:
         if shuffle:
@@ -131,7 +134,7 @@ if __name__ == "__main__":
                             shuffle=False,
                             step=step,
                             batch_size=batch_size)
-    val_steps = ( part_num*(train_parts+val_parts)-1 - part_num*train_parts - lookback)
+    val_steps = ( part_num*(train_parts+val_parts) - part_num*train_parts - lookback)
     test_steps = ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback)
 
     steps_per_epoch = int(part_num*train_parts/batch_size)

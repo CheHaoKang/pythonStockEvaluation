@@ -138,7 +138,7 @@ def normalizeData(data, train_length):
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
     # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" ORDER BY stockDate ASC'
-    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-12-31\' ORDER BY stockDate ASC'
+    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-07-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
@@ -157,6 +157,9 @@ def getStockData(stockCode):
 def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_size=128, step=1):
     if max_index is None:
         max_index = len(data) - delay - 1
+    else:
+        max_index = max_index - delay
+
     i = min_index + lookback
     while 1:
         if shuffle:
@@ -164,18 +167,22 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         else:
             if i + batch_size >= max_index:
                 i = min_index + lookback
+            print(i, i + batch_size, min(i + batch_size, max_index))
             rows = np.arange(i, min(i + batch_size, max_index))
             i += len(rows)
 
         samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
         targets = np.zeros((len(rows),))
+        print(rows)
         for j, row in enumerate(rows):
             indices = range(rows[j] - lookback, rows[j], step)
             samples[j] = data[indices]
             # print(samples[j])
             targets[j] = data[rows[j] + delay][0] # 0 means using stockIndex
+            # print(rows[j])
             # print(targets[j])
         # print(samples)
+        # print(targets)
         # exit(1)
         yield samples, targets
         # return samples, targets
@@ -188,56 +195,15 @@ if __name__ == "__main__":
     val_parts = 1
     test_parts = 1
     part_num = int(len(stockData)/num_parts)
-    normalizeStockData = normalizeData(stockData, part_num*train_parts)
+    # normalizeStockData = normalizeData(stockData, part_num*train_parts)
 
     lookback = 5
-    delay = 3
+    delay = 10
     # min_index = 0
     # max_index = len(normalizeStockData)-1
     batch_size = 10
     step = 1
-    # generator(stockData, lookback, delay, 0, None, False, batch_size, step)
-    train_gen   = generator(normalizeStockData,
-                          lookback=lookback,
-                          delay=delay,
-                          min_index=0,
-                          max_index=part_num*train_parts-1,
-                          shuffle=False,
-                          step=step,
-                          batch_size=batch_size)
-    val_gen     = generator(normalizeStockData,
-                          lookback=lookback,
-                          delay=delay,
-                          min_index=part_num*train_parts,
-                          max_index=part_num*(train_parts+val_parts)-1,
-                          shuffle=False,
-                          step=step,
-                          batch_size=batch_size)
-    test_gen    = generator(normalizeStockData,
-                            lookback=lookback,
-                            delay=delay,
-                            min_index=part_num*(train_parts+val_parts),
-                            max_index=None,
-                            shuffle=False,
-                            step=step,
-                            batch_size=batch_size)
-    val_steps = ( part_num*(train_parts+val_parts)-1 - part_num*train_parts - lookback)
-    test_steps = ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback)
-
-    steps_per_epoch = int(part_num*train_parts/batch_size)
-    model = Sequential()
-    model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))
-    model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(1))
-    model.compile(optimizer=RMSprop(), loss='mae')
-    history = model.fit_generator(train_gen,
-                                  steps_per_epoch=steps_per_epoch,
-                                  epochs=20,
-                                  validation_data=val_gen,
-                                  validation_steps=val_steps)
-
-    drawEvaluationDiagram(history)
-
+    generator(stockData, lookback, delay, 0, 20, False, batch_size, step)
     # for one in generator(normalizeStockData, lookback, delay, min_index, max_index, False, batch_size, step):
     #     print(one)
     #     print('\n')
