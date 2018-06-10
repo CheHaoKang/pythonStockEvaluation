@@ -123,8 +123,18 @@ def get_stockData_with_stockCode_days(stockCode, days):
     print(stockData)
     return stockData
 
+def updatePrediction(stockCode, stockDate, stockPrediciton):
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE stockdata SET stockPrediction=%s WHERE stockCode=%s AND stockDate=%s", (stockPrediciton, stockCode, stockDate))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
 if __name__ == "__main__":
-    stockData_with_stockCode_days = get_stockData_with_stockCode_days('0050', 14)
+    updatePrediction('0050', '2018-06-08', 2.5)
+
     # print(stockData_with_stockCode_days)
     # stockData, stockData_with_date = getStockData('0050')
     #

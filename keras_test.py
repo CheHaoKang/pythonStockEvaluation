@@ -72,17 +72,20 @@ def getStockData(stockCode):
     for i,row in enumerate(results):
         # stockData.append([row[0], row[1], str(row[2])])
         stockData[i,:] = [row[1]]
-        stockData_with_date[i,:] = [row[0],str(row[2]).replace('-',''),row[1]]
+        # stockData_with_date[i,:] = [row[0],str(row[2]).replace('-',''),row[1]]
+
+    cursor.close()
+    conn.close()
 
     # print(stockData)
     return stockData, stockData_with_date
 
-def get_stockData_with_stockCode_days(stockCode, days):
-    sql = 'SELECT * FROM (SELECT stockCode,stockDate,stockIndex FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC14 ORDER BY stockDate ASC'
+def get_stockData_with_stockCode_days(stockCode, days, from_which_date):
+    sql = 'SELECT * FROM (SELECT stockCode,stockDate,stockIndex FROM stockdata WHERE stockCode=%s AND stockDate<=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC14 ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
-    cursor.execute(sql, (stockCode, days))
+    cursor.execute(sql, (stockCode, from_which_date, days))
 
     ### start_index defines which SQL parameter to start from
     ### num_features defines "from start_index, how many parameters to be used"
@@ -97,6 +100,9 @@ def get_stockData_with_stockCode_days(stockCode, days):
         # stockDataList.append([ row[1] ])
         stockData[0, counter] = np.asarray([ row[i] for i in range(start_index, start_index+num_features) ])
         counter += 1
+
+    cursor.close()
+    conn.close()
 
     # print(stockData)
     return stockData
@@ -142,65 +148,124 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         yield samples, targets
         # return samples, targets
 
+def getStockCodes():
+    sql = 'SELECT DISTINCT(stockCode) FROM stockData ORDER BY stockCode ASC'
+
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute(sql)
+
+    results = cursor.fetchall()
+    stockCodes = []
+    for i, row in enumerate(results):
+        stockCodes.append(row[0])
+
+    cursor.close()
+    conn.close()
+
+    return stockCodes
+
+def updatePrediction(stockCode, stockDate, stockPrediciton):
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE stockdata SET stockPrediction=%s WHERE stockCode=%s AND stockDate=%s", (stockPrediciton, stockCode, stockDate))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+def ifUpdateAvailable(stockDate):
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(1) AS counter FROM stockData WHERE stockdate=%s", (stockDate))
+
+    results = cursor.fetchall()
+    available = False
+    for i, row in enumerate(results):
+        if int(row[0])>=1:
+            available = True
+
+    cursor.close()
+    conn.close()
+
+    return available
 
 if __name__ == "__main__":
-    stockData, stockData_with_date = getStockData('0050')
+    ##################
+    stockCodes = getStockCodes()
+    # updatedDate = datetime.datetime.now().strftime("%Y-%m-%d")
+    updatedDate = '2018-06-08'
+    if not ifUpdateAvailable(updatedDate):
+        exit(0)
 
-    num_parts = 5
-    train_parts = 3
-    val_parts = 1
-    test_parts = 1
-    part_num = int(len(stockData)/num_parts)
-    normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
-    # normalizeStockData = stockData
+    for oneStock in stockCodes:
+        print('>>>', oneStock, '<<<')
+        stockData, stockData_with_date = getStockData(oneStock)
 
-    lookback = 14
-    delay = 0
-    # min_index = 0
-    # max_index = len(normalizeStockData)-1
-    batch_size = 10
-    step = 1
-    # generator(stockData, lookback, delay, 0, None, False, batch_size, step)
-    train_gen   = generator(normalizeStockData,
-                          lookback=lookback,
-                          delay=delay,
-                          min_index=0,
-                          max_index=part_num*train_parts-1,
-                          shuffle=False,
-                          step=step,
-                          batch_size=batch_size)
-    val_gen     = generator(normalizeStockData,
-                          lookback=lookback,
-                          delay=delay,
-                          min_index=part_num*train_parts,
-                          max_index=part_num*(train_parts+val_parts)-1,
-                          shuffle=False,
-                          step=step,
-                          batch_size=batch_size)
-    test_gen    = generator(normalizeStockData,
-                            lookback=lookback,
-                            delay=delay,
-                            min_index=part_num*(train_parts+val_parts),
-                            max_index=None,
-                            shuffle=False,
-                            step=step,
-                            batch_size=batch_size)
-    val_steps = int( ( part_num*(train_parts+val_parts)+1 - part_num*train_parts - lookback - delay ) / batch_size )
-    test_steps = int( ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback - delay ) / batch_size )
+        num_parts = 5
+        train_parts = 3
+        val_parts = 2
+        test_parts = 0
+        part_num = int(len(stockData)/num_parts)
+        normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
+        # normalizeStockData = stockData
 
-    steps_per_epoch = int(part_num*train_parts/batch_size)
-    model = Sequential()
-    model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))
-    model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(1))
-    model.compile(optimizer=RMSprop(), loss='mae')
-    history = model.fit_generator(train_gen,
-                                  steps_per_epoch=steps_per_epoch,
-                                  epochs=20,
-                                  validation_data=val_gen,
-                                  validation_steps=val_steps)
+        lookback = 14
+        delay = 0
+        # min_index = 0
+        # max_index = len(normalizeStockData)-1
+        batch_size = 10
+        step = 1
+        # generator(stockData, lookback, delay, 0, None, False, batch_size, step)
+        train_gen   = generator(normalizeStockData,
+                              lookback=lookback,
+                              delay=delay,
+                              min_index=0,
+                              max_index=part_num*train_parts-1,
+                              shuffle=False,
+                              step=step,
+                              batch_size=batch_size)
+        val_gen     = generator(normalizeStockData,
+                              lookback=lookback,
+                              delay=delay,
+                              min_index=part_num*train_parts,
+                              max_index=part_num*(train_parts+val_parts)-1,
+                              shuffle=False,
+                              step=step,
+                              batch_size=batch_size)
+        test_gen    = generator(normalizeStockData,
+                                lookback=lookback,
+                                delay=delay,
+                                min_index=part_num*(train_parts+val_parts),
+                                max_index=None,
+                                shuffle=False,
+                                step=step,
+                                batch_size=batch_size)
+        val_steps = int( ( part_num*(train_parts+val_parts)+1 - part_num*train_parts - lookback - delay ) / batch_size )
+        test_steps = int( ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback - delay ) / batch_size )
 
-    drawEvaluationDiagram(history)
+        steps_per_epoch = int(part_num*train_parts/batch_size)
+        model = Sequential()
+        model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))
+        model.add(layers.Dense(32, activation='relu'))
+        model.add(layers.Dense(1))
+        model.compile(optimizer=RMSprop(), loss='mae')
+        history = model.fit_generator(train_gen,
+                                      steps_per_epoch=steps_per_epoch,
+                                      epochs=20,
+                                      validation_data=val_gen,
+                                      validation_steps=val_steps)
+
+        # drawEvaluationDiagram(history)
+
+        stockData_with_stockCode_days = get_stockData_with_stockCode_days(oneStock, lookback, updatedDate)
+        print(stockData_with_stockCode_days)
+        normalized_data = normalize_data_with_imported_mean_std(stockData_with_stockCode_days, mean, std)
+        predictions = model.predict( normalized_data )
+        revert_normalized_data = float( normalize_data_with_imported_mean_std(predictions, mean, std, 'back')[0][0] )
+        print( revert_normalized_data )
+        updatePrediction(oneStock, updatedDate, revert_normalized_data)
+    ##################
 
     # with open('trainHistoryDict.pickle', 'wb') as file_pi:
     #     pickle.dump(history.history, file_pi)
@@ -208,11 +273,8 @@ if __name__ == "__main__":
     # del model
     # model = load_model('stock_trained.h5')
 
-    stockData_with_stockCode_days = get_stockData_with_stockCode_days('0050', lookback)
-    print(stockData_with_stockCode_days)
-    normalized_data = normalize_data_with_imported_mean_std(stockData_with_stockCode_days, mean, std)
-    predictions = model.predict( normalized_data )
-    print( normalize_data_with_imported_mean_std(predictions, mean, std, 'back') )
+
+
     ##########################################
     # print('@@@@@', test_steps)
     # predictions = model.predict_generator(test_gen, steps=test_steps)
