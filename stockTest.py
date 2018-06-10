@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+import pickle
 import requests
 import pymysql.cursors
 import json
@@ -25,96 +26,7 @@ from keras.models import Sequential
 from keras import layers
 from keras.optimizers import RMSprop
 import matplotlib.pyplot as plt
-
-def FullToHalf(s):
-    n = []
-    # s = s.decode('utf-8')
-    for char in s:
-        num = ord(char)
-        if num == 0x3000:
-            num = 32
-        elif 0xFF01 <= num <= 0xFF5E:
-            num -= 0xfee0
-        num = chr(num)
-        n.append(num)
-    return ''.join(n)
-
-def listToFreqdict(inputList):
-    outputDict=dict()
-    print(inputList)
-    for i in range(len(inputList)):
-        outputDict[tuple(inputList[i])] = outputDict.get(tuple(inputList[i]), 0) + 1
-    return outputDict
-    # for oneItem in inputList:
-    #     print(oneItem)
-    #     outputDict[oneItem]=outputDict.get(oneItem,0)+1
-    # return outputDict
-
-def listToNGram(inputList,ngram):
-    return [inputList[i:i+ngram] for i in range(0,len(inputList)-ngram+1)]
-
-# def bigram2freqdict(mybigram):
-#     mydict=dict()
-#     for (ch1,ch2) in mybigram:
-#         mydict[(ch1,ch2)]=mydict.get((ch1,ch2),0)+1
-#     return mydict
-#
-# def trigram2freqdict(mytrigram):
-#     mydict=dict()
-#     for (ch1,ch2,ch3) in mytrigram:
-#         mydict[(ch1,ch2,ch3)]=mydict.get((ch1,ch2,ch3),0)+1
-#     return mydict
-
-def getStockNameInfoStartupdate():
-    sql = """
-    SELECT st.stockCode, st.stockName, st.stockInfo, stStartup.stockdate FROM stocktable AS st
-    LEFT JOIN (
-    SELECT stockcode, stockdate FROM stockdata GROUP BY stockcode ORDER BY stockdate ASC
-    ) stStartup ON st.stockCode=stStartup.stockcode
-    """
-    try:
-        # Execute the SQL command
-        conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        stockCodeNames = {}
-        results = cursor.fetchall()
-        for row in results:
-            stockCodeNames[row[0]] = [row[1],row[2], str(row[3])]
-    except:
-        print("Error: unable to fecth data")
-
-    cursor.close()
-    conn.commit()
-    conn.close()
-
-    return stockCodeNames
-
-def extend_list(val, l=[]):
-    print(l)
-    l.append(val)
-    print(l)
-    return l
-
-def test_extend_list():
-    # 1
-    assert extend_list(1) == [1]
-    # 2
-    assert extend_list(2, []) == [2]
-    # 3
-    assert extend_list(3) == [3]
-
-def vectorize_sequences(sequences, dimension=10000):
-    results = np.zeros((len(sequences), dimension))
-    for i, sequence in enumerate(sequences):
-        print(i, sequence)
-        results[i, sequence] = 1.
-        for j in results[i]:
-            print(j,)
-        exit(1)
-    return results
-
+from keras.models import load_model
 
 def drawEvaluationDiagram(history):
     loss = history.history['loss']
@@ -133,12 +45,12 @@ def normalizeData(data, train_length):
     std = data[:train_length].std(axis=0)
     data /= std
 
-    return data
+    return data, mean, std
 
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
     # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" ORDER BY stockDate ASC'
-    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-07-31\' ORDER BY stockDate ASC'
+    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-12-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
@@ -146,12 +58,14 @@ def getStockData(stockCode):
 
     results = cursor.fetchall()
     stockData = np.zeros( (len(results), len(results[0])-skipColumns) )
+    stockData_with_date = np.zeros((len(results), len(results[0])))
     for i,row in enumerate(results):
         # stockData.append([row[0], row[1], str(row[2])])
         stockData[i,:] = [row[1]]
+        stockData_with_date[i,:] = [row[0],str(row[2]).replace('-',''),row[1]]
 
     # print(stockData)
-    return stockData
+    return stockData, stockData_with_date
 
 # Deep Learning with Python => Page 211 (234 / 386)
 def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_size=128, step=1):
@@ -161,49 +75,119 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         max_index = max_index - delay
 
     i = min_index + lookback
+
     while 1:
         if shuffle:
-            rows = np.random.randint(min_index + lookback, max_index, size=batch_size)
+            rows = np.random.randint(min_index + lookback, max_index+1, size=batch_size)
         else:
-            if i + batch_size >= max_index:
+            if i + batch_size - 1 > max_index:
                 i = min_index + lookback
-            print(i, i + batch_size, min(i + batch_size, max_index))
-            rows = np.arange(i, min(i + batch_size, max_index))
+            rows = np.arange(i, min(i + batch_size, max_index+1))
             i += len(rows)
+
+        print('min_index:', min_index, 'i:', i, 'len(rows):', len(rows), 'max_index:', max_index)
+        print(rows)
 
         samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
         targets = np.zeros((len(rows),))
-        print(rows)
         for j, row in enumerate(rows):
             indices = range(rows[j] - lookback, rows[j], step)
             samples[j] = data[indices]
             # print(samples[j])
             targets[j] = data[rows[j] + delay][0] # 0 means using stockIndex
-            # print(rows[j])
             # print(targets[j])
-        # print(samples)
-        # print(targets)
+        print(samples)
+        print(targets)
+        print('_____________')
         # exit(1)
         yield samples, targets
         # return samples, targets
 
 if __name__ == "__main__":
-    stockData = getStockData('0050')
+    stockData, stockData_with_date = getStockData('0050')
 
     num_parts = 5
     train_parts = 3
     val_parts = 1
     test_parts = 1
     part_num = int(len(stockData)/num_parts)
-    # normalizeStockData = normalizeData(stockData, part_num*train_parts)
+    # normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
+    normalizeStockData = stockData
 
     lookback = 5
-    delay = 10
+    delay = 3
     # min_index = 0
     # max_index = len(normalizeStockData)-1
     batch_size = 10
     step = 1
-    generator(stockData, lookback, delay, 0, 20, False, batch_size, step)
+    test_steps = int((len(normalizeStockData) - part_num * (train_parts + val_parts) - lookback - delay) / batch_size)
+    print(test_steps)
+    for one in generator(normalizeStockData,
+                             lookback=lookback,
+                             delay=delay,
+                             min_index=part_num*(train_parts+val_parts),
+                             max_index=None,
+                             shuffle=False,
+                             step=step,
+                             batch_size=batch_size):
+        print()
+
+    # train_gen   = generator(normalizeStockData,
+    #                       lookback=lookback,
+    #                       delay=delay,
+    #                       min_index=0,
+    #                       max_index=part_num*train_parts-1,
+    #                       shuffle=False,
+    #                       step=step,
+    #                       batch_size=batch_size)
+    # val_gen     = generator(normalizeStockData,
+    #                       lookback=lookback,
+    #                       delay=delay,
+    #                       min_index=part_num*train_parts,
+    #                       max_index=part_num*(train_parts+val_parts)-1,
+    #                       shuffle=False,
+    #                       step=step,
+    #                       batch_size=batch_size)
+    # test_gen    = generator(normalizeStockData,
+    #                         lookback=lookback,
+    #                         delay=delay,
+    #                         min_index=part_num*(train_parts+val_parts),
+    #                         max_index=None,
+    #                         shuffle=False,
+    #                         step=step,
+    #                         batch_size=batch_size)
+    # val_steps = ( part_num*(train_parts+val_parts) - part_num*train_parts - lookback)
+    # test_steps = ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback)
+    #
+    # steps_per_epoch = int(part_num*train_parts/batch_size)
+    # model = Sequential()
+    # model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))
+    # model.add(layers.Dense(32, activation='relu'))
+    # model.add(layers.Dense(1))
+    # model.compile(optimizer=RMSprop(), loss='mae')
+    # history = model.fit_generator(train_gen,
+    #                               steps_per_epoch=steps_per_epoch,
+    #                               epochs=20,
+    #                               validation_data=val_gen,
+    #                               validation_steps=val_steps)
+    #
+    # drawEvaluationDiagram(history)
+    #
+    # # with open('trainHistoryDict.pickle', 'wb') as file_pi:
+    # #     pickle.dump(history.history, file_pi)
+    # # model.save('stock_trained.h5')
+    # # del model
+    # # model = load_model('stock_trained.h5')
+    #
+    # print('@@@@@')
+    # predictions = model.predict_generator(test_gen, test_steps)
+    # print(len(stockData_with_date), part_num*(train_parts+val_parts), len(predictions))
+    # stockData_with_date = stockData_with_date[ part_num*(train_parts+val_parts): ]
+    # stockData_with_date_index = 0
+    # for one_index in predictions:
+    #     print(stockData_with_date[stockData_with_date_index][1], stockData_with_date[stockData_with_date_index][2], one_index*std + mean)
+    #     stockData_with_date_index += 1
+
     # for one in generator(normalizeStockData, lookback, delay, min_index, max_index, False, batch_size, step):
     #     print(one)
     #     print('\n')

@@ -45,7 +45,7 @@ def normalizeData(data, train_length):
     std = data[:train_length].std(axis=0)
     data /= std
 
-    return data
+    return data, mean, std
 
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
@@ -58,12 +58,14 @@ def getStockData(stockCode):
 
     results = cursor.fetchall()
     stockData = np.zeros( (len(results), len(results[0])-skipColumns) )
+    stockData_with_date = np.zeros((len(results), len(results[0])))
     for i,row in enumerate(results):
         # stockData.append([row[0], row[1], str(row[2])])
         stockData[i,:] = [row[1]]
+        stockData_with_date[i,:] = [row[0],str(row[2]).replace('-',''),row[1]]
 
     # print(stockData)
-    return stockData
+    return stockData, stockData_with_date
 
 # Deep Learning with Python => Page 211 (234 / 386)
 def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_size=128, step=1):
@@ -73,14 +75,23 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         max_index = max_index - delay
 
     i = min_index + lookback
+
+    counter = 0
+
     while 1:
+        counter += 1
+        print('counter:', counter)
+
         if shuffle:
-            rows = np.random.randint(min_index + lookback, max_index, size=batch_size)
+            rows = np.random.randint(min_index + lookback, max_index+1, size=batch_size)
         else:
-            if i + batch_size >= max_index:
+            if i + batch_size - 1 > max_index:
                 i = min_index + lookback
-            rows = np.arange(i, min(i + batch_size, max_index))
+            rows = np.arange(i, min(i + batch_size, max_index+1))
             i += len(rows)
+
+        print('min_index:', min_index, 'i:', i, 'len(rows):', len(rows), 'max_index:', max_index)
+        print(rows)
 
         samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
         targets = np.zeros((len(rows),))
@@ -90,20 +101,23 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
             # print(samples[j])
             targets[j] = data[rows[j] + delay][0] # 0 means using stockIndex
             # print(targets[j])
-        # print(samples)
+        print(samples)
+        print(targets)
+        print('_____________')
         # exit(1)
         yield samples, targets
         # return samples, targets
 
 if __name__ == "__main__":
-    stockData = getStockData('0050')
+    stockData, stockData_with_date = getStockData('0050')
 
     num_parts = 5
     train_parts = 3
     val_parts = 1
     test_parts = 1
     part_num = int(len(stockData)/num_parts)
-    normalizeStockData = normalizeData(stockData, part_num*train_parts)
+    normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
+    # normalizeStockData = stockData
 
     lookback = 5
     delay = 3
@@ -136,8 +150,8 @@ if __name__ == "__main__":
                             shuffle=False,
                             step=step,
                             batch_size=batch_size)
-    val_steps = ( part_num*(train_parts+val_parts) - part_num*train_parts - lookback)
-    test_steps = ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback)
+    val_steps = int( ( part_num*(train_parts+val_parts)+1 - part_num*train_parts - lookback - delay ) / batch_size )
+    test_steps = int( ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback - delay ) / batch_size )
 
     steps_per_epoch = int(part_num*train_parts/batch_size)
     model = Sequential()
@@ -155,9 +169,18 @@ if __name__ == "__main__":
 
     # with open('trainHistoryDict.pickle', 'wb') as file_pi:
     #     pickle.dump(history.history, file_pi)
-    model.save('stock_trained.h5')
-    del model
-    model = load_model('stock_trained.h5')
+    # model.save('stock_trained.h5')
+    # del model
+    # model = load_model('stock_trained.h5')
+
+    print('@@@@@', test_steps)
+    predictions = model.predict_generator(test_gen, steps=test_steps)
+    print(len(stockData_with_date), part_num*(train_parts+val_parts), len(predictions))
+    stockData_with_date = stockData_with_date[ part_num*(train_parts+val_parts): ]
+    stockData_with_date_index = 0
+    for one_index in predictions:
+        print(stockData_with_date[stockData_with_date_index][1], stockData_with_date[stockData_with_date_index][2], one_index*std + mean)
+        stockData_with_date_index += 1
 
     # for one in generator(normalizeStockData, lookback, delay, min_index, max_index, False, batch_size, step):
     #     print(one)
