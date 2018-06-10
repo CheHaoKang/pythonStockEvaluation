@@ -5,7 +5,7 @@ import requests
 import pymysql.cursors
 import json
 import csv
-import sys
+import sys,traceback
 import datetime
 # from fake_useragent import UserAgent
 import time
@@ -148,12 +148,12 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         yield samples, targets
         # return samples, targets
 
-def getStockCodes():
-    sql = 'SELECT DISTINCT(stockCode) FROM stockData ORDER BY stockCode ASC'
+def getStockCodes(fromStockCode='0'):
+    sql = 'SELECT DISTINCT(stockCode) FROM stockData WHERE stockCode>=%s ORDER BY stockCode ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
-    cursor.execute(sql)
+    cursor.execute(sql, (fromStockCode))
 
     results = cursor.fetchall()
     stockCodes = []
@@ -192,12 +192,14 @@ def ifUpdateAvailable(stockDate):
 
 if __name__ == "__main__":
     ##################
-    stockCodes = getStockCodes()
+    # stockCodes = getStockCodes()
+    stockCodes = getStockCodes('1587')
     # updatedDate = datetime.datetime.now().strftime("%Y-%m-%d")
     updatedDate = '2018-06-08'
     if not ifUpdateAvailable(updatedDate):
         exit(0)
 
+    # stockCodes = ['1587']
     for oneStock in stockCodes:
         print('>>>', oneStock, '<<<')
         stockData, stockData_with_date = getStockData(oneStock)
@@ -250,11 +252,16 @@ if __name__ == "__main__":
         model.add(layers.Dense(32, activation='relu'))
         model.add(layers.Dense(1))
         model.compile(optimizer=RMSprop(), loss='mae')
-        history = model.fit_generator(train_gen,
-                                      steps_per_epoch=steps_per_epoch,
-                                      epochs=20,
-                                      validation_data=val_gen,
-                                      validation_steps=val_steps)
+
+        try:
+            history = model.fit_generator(train_gen,
+                                          steps_per_epoch=steps_per_epoch,
+                                          epochs=20,
+                                          validation_data=val_gen,
+                                          validation_steps=val_steps)
+        except:
+            traceback.print_exc(file=sys.stdout)
+            continue
 
         # drawEvaluationDiagram(history)
 
