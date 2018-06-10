@@ -103,34 +103,56 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
         yield samples, targets
         # return samples, targets
 
+def get_stockData_with_stockCode_days(stockCode, days):
+    sql = 'SELECT * FROM (SELECT stockCode,stockDate,stockIndex FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC14 ORDER BY stockDate ASC'
+
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute(sql, (stockCode, days))
+
+    start_index = 2
+    num_features = 1
+    results = cursor.fetchall()
+    stockData = np.zeros( (1, len(results), num_features) )
+    counter = 0
+    for i, row in enumerate(results):
+        # stockDataList.append([ row[1] ])
+        stockData[0, counter] = np.asarray([ row[i] for i in range(start_index, start_index+num_features) ])
+        counter += 1
+
+    print(stockData)
+    return stockData
+
 if __name__ == "__main__":
-    stockData, stockData_with_date = getStockData('0050')
-
-    num_parts = 5
-    train_parts = 3
-    val_parts = 1
-    test_parts = 1
-    part_num = int(len(stockData)/num_parts)
-    # normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
-    normalizeStockData = stockData
-
-    lookback = 5
-    delay = 3
-    # min_index = 0
-    # max_index = len(normalizeStockData)-1
-    batch_size = 10
-    step = 1
-    test_steps = int((len(normalizeStockData) - part_num * (train_parts + val_parts) - lookback - delay) / batch_size)
-    print(test_steps)
-    for one in generator(normalizeStockData,
-                             lookback=lookback,
-                             delay=delay,
-                             min_index=part_num*(train_parts+val_parts),
-                             max_index=None,
-                             shuffle=False,
-                             step=step,
-                             batch_size=batch_size):
-        print()
+    stockData_with_stockCode_days = get_stockData_with_stockCode_days('0050', 14)
+    # print(stockData_with_stockCode_days)
+    # stockData, stockData_with_date = getStockData('0050')
+    #
+    # num_parts = 5
+    # train_parts = 3
+    # val_parts = 1
+    # test_parts = 1
+    # part_num = int(len(stockData)/num_parts)
+    # # normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
+    # normalizeStockData = stockData
+    #
+    # lookback = 5
+    # delay = 3
+    # # min_index = 0
+    # # max_index = len(normalizeStockData)-1
+    # batch_size = 10
+    # step = 1
+    # test_steps = int((len(normalizeStockData) - part_num * (train_parts + val_parts) - lookback - delay) / batch_size)
+    # print(test_steps)
+    # for one in generator(normalizeStockData,
+    #                          lookback=lookback,
+    #                          delay=delay,
+    #                          min_index=part_num*(train_parts+val_parts),
+    #                          max_index=None,
+    #                          shuffle=False,
+    #                          step=step,
+    #                          batch_size=batch_size):
+    #     print()
 
     # train_gen   = generator(normalizeStockData,
     #                       lookback=lookback,

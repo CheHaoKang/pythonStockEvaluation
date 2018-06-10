@@ -47,14 +47,24 @@ def normalizeData(data, train_length):
 
     return data, mean, std
 
+def normalize_data_with_imported_mean_std(data, mean, std, to_or_back='to'):
+    if to_or_back=='to':
+        data -= mean
+        data /= std
+    else:
+        data *= std
+        data += mean
+
+    return data
+
 def getStockData(stockCode):
     skipColumns = 2  # skip stockCode and stockDate
-    # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" ORDER BY stockDate ASC'
-    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2003-12-31\' ORDER BY stockDate ASC'
+    sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode=%s ORDER BY stockDate ASC'
+    # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2018-07-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
-    cursor.execute(sql)
+    cursor.execute(sql, (stockCode))
 
     results = cursor.fetchall()
     stockData = np.zeros( (len(results), len(results[0])-skipColumns) )
@@ -67,6 +77,30 @@ def getStockData(stockCode):
     # print(stockData)
     return stockData, stockData_with_date
 
+def get_stockData_with_stockCode_days(stockCode, days):
+    sql = 'SELECT * FROM (SELECT stockCode,stockDate,stockIndex FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC14 ORDER BY stockDate ASC'
+
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cursor = conn.cursor()
+    cursor.execute(sql, (stockCode, days))
+
+    ### start_index defines which SQL parameter to start from
+    ### num_features defines "from start_index, how many parameters to be used"
+    start_index = 2
+    num_features = 1
+    ###___
+
+    results = cursor.fetchall()
+    stockData = np.zeros( (1, len(results), num_features) )
+    counter = 0
+    for i, row in enumerate(results):
+        # stockDataList.append([ row[1] ])
+        stockData[0, counter] = np.asarray([ row[i] for i in range(start_index, start_index+num_features) ])
+        counter += 1
+
+    # print(stockData)
+    return stockData
+
 # Deep Learning with Python => Page 211 (234 / 386)
 def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_size=128, step=1):
     if max_index is None:
@@ -76,11 +110,11 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
 
     i = min_index + lookback
 
-    counter = 0
+    # counter = 0
 
     while 1:
-        counter += 1
-        print('counter:', counter)
+        # counter += 1
+        # print('counter:', counter)
 
         if shuffle:
             rows = np.random.randint(min_index + lookback, max_index+1, size=batch_size)
@@ -90,8 +124,8 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
             rows = np.arange(i, min(i + batch_size, max_index+1))
             i += len(rows)
 
-        print('min_index:', min_index, 'i:', i, 'len(rows):', len(rows), 'max_index:', max_index)
-        print(rows)
+        # print('min_index:', min_index, 'i:', i, 'len(rows):', len(rows), 'max_index:', max_index)
+        # print(rows)
 
         samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
         targets = np.zeros((len(rows),))
@@ -101,12 +135,13 @@ def generator(data, lookback, delay, min_index, max_index, shuffle=False, batch_
             # print(samples[j])
             targets[j] = data[rows[j] + delay][0] # 0 means using stockIndex
             # print(targets[j])
-        print(samples)
-        print(targets)
-        print('_____________')
+        # print(samples)
+        # print(targets)
+        # print('_____________')
         # exit(1)
         yield samples, targets
         # return samples, targets
+
 
 if __name__ == "__main__":
     stockData, stockData_with_date = getStockData('0050')
@@ -119,8 +154,8 @@ if __name__ == "__main__":
     normalizeStockData, mean, std = normalizeData(stockData, part_num*train_parts)
     # normalizeStockData = stockData
 
-    lookback = 5
-    delay = 3
+    lookback = 14
+    delay = 0
     # min_index = 0
     # max_index = len(normalizeStockData)-1
     batch_size = 10
@@ -173,14 +208,21 @@ if __name__ == "__main__":
     # del model
     # model = load_model('stock_trained.h5')
 
-    print('@@@@@', test_steps)
-    predictions = model.predict_generator(test_gen, steps=test_steps)
-    print(len(stockData_with_date), part_num*(train_parts+val_parts), len(predictions))
-    stockData_with_date = stockData_with_date[ part_num*(train_parts+val_parts): ]
-    stockData_with_date_index = 0
-    for one_index in predictions:
-        print(stockData_with_date[stockData_with_date_index][1], stockData_with_date[stockData_with_date_index][2], one_index*std + mean)
-        stockData_with_date_index += 1
+    stockData_with_stockCode_days = get_stockData_with_stockCode_days('0050', lookback)
+    print(stockData_with_stockCode_days)
+    normalized_data = normalize_data_with_imported_mean_std(stockData_with_stockCode_days, mean, std)
+    predictions = model.predict( normalized_data )
+    print( normalize_data_with_imported_mean_std(predictions, mean, std, 'back') )
+    ##########################################
+    # print('@@@@@', test_steps)
+    # predictions = model.predict_generator(test_gen, steps=test_steps)
+    # print(len(stockData_with_date), part_num*(train_parts+val_parts), len(predictions))
+    # stockData_with_date = stockData_with_date[ part_num*(train_parts+val_parts): ]
+    # stockData_with_date_index = 0
+    # for one_index in predictions:
+    #     print(stockData_with_date[stockData_with_date_index][1], stockData_with_date[stockData_with_date_index][2], one_index*std + mean)
+    #     stockData_with_date_index += 1
+    ##########################################
 
     # for one in generator(normalizeStockData, lookback, delay, min_index, max_index, False, batch_size, step):
     #     print(one)
