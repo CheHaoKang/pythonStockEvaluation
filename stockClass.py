@@ -162,11 +162,13 @@ class stockClass(object):
 
         # 自營商買賣超彙總表
         succeed = False
+        nowProxy = self.getProxy(0)
+        proxies = {"http": "http://" + nowProxy}
         while not succeed:
-            header = {'User-Agent': str(ua.random)}
-            res = requests.get("http://www.twse.com.tw/fund/TWT43U?response=json&date=" + str(date), headers=header)
-
             try:
+                header = {'User-Agent': str(ua.random)}
+                res = requests.get("http://www.twse.com.tw/fund/TWT43U?response=json&date=" + str(date), headers=header, proxies=proxies, timeout=10)
+
                 s = json.loads(res.text)
                 if 'data' in s:
                     for data in s['data']:
@@ -179,18 +181,27 @@ class stockClass(object):
                     succeed = True
                 elif 'stat' in s and '很抱歉' in s['stat']:
                     succeed = True
+                else:
+                    self.updateProxyInfo(nowProxy, False, 0)
+                    nowProxy = self.getProxy(0)
+                    proxies = {"http": "http://" + nowProxy}
             except:
                 print("Unexpected error:", sys.exc_info())
+                self.updateProxyInfo(nowProxy, False, 0)
+                nowProxy = self.getProxy(0)
+                proxies = {"http": "http://" + nowProxy}
 
         time.sleep(1)
 
         # 投信買賣超彙總表
         succeed = False
+        nowProxy = self.getProxy(1)
+        proxies = {"http": "http://" + nowProxy}
         while not succeed:
-            header = {'User-Agent': str(ua.random)}
-            res = requests.get("http://www.twse.com.tw/fund/TWT44U?response=json&date=" + str(date), headers=header)
-
             try:
+                header = {'User-Agent': str(ua.random)}
+                res = requests.get("http://www.twse.com.tw/fund/TWT44U?response=json&date=" + str(date), headers=header, proxies=proxies, timeout=10)
+
                 s = json.loads(res.text)
                 if 'data' in s:
                     for data in s['data']:
@@ -199,18 +210,27 @@ class stockClass(object):
                     succeed = True
                 elif 'stat' in s and '很抱歉' in s['stat']:
                     succeed = True
+                else:
+                    self.updateProxyInfo(nowProxy, False, 0)
+                    nowProxy = self.getProxy(1)
+                    proxies = {"http": "http://" + nowProxy}
             except:
                 print("Unexpected error:", sys.exc_info())
+                self.updateProxyInfo(nowProxy, False, 0)
+                nowProxy = self.getProxy(1)
+                proxies = {"http": "http://" + nowProxy}
 
         time.sleep(1)
 
         # 外資及陸資買賣超彙總表
         succeed = False
+        nowProxy = self.getProxy(2)
+        proxies = {"http": "http://" + nowProxy}
         while not succeed:
-            header = {'User-Agent': str(ua.random)}
-            res = requests.get("http://www.twse.com.tw/fund/TWT38U?response=json&date=" + str(date), headers=header)
-
             try:
+                header = {'User-Agent': str(ua.random)}
+                res = requests.get("http://www.twse.com.tw/fund/TWT38U?response=json&date=" + str(date), headers=header, proxies=proxies, timeout=10)
+
                 s = json.loads(res.text)
                 if 'data' in s:
                     for data in s['data']:
@@ -219,8 +239,15 @@ class stockClass(object):
                     succeed = True
                 elif 'stat' in s and '很抱歉' in s['stat']:
                     succeed = True
+                else:
+                    self.updateProxyInfo(nowProxy, False, 0)
+                    nowProxy = self.getProxy(2)
+                    proxies = {"http": "http://" + nowProxy}
             except:
                 print("Unexpected error:", sys.exc_info())
+                self.updateProxyInfo(nowProxy, False, 0)
+                nowProxy = self.getProxy(2)
+                proxies = {"http": "http://" + nowProxy}
 
         print(insInvestArray)
         if insInvestArray:  # not empty
@@ -228,7 +255,7 @@ class stockClass(object):
                 try:
                     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                     cur = conn.cursor()
-                    insert = "INSERT INTO stockInstitutionalInvestor (stockDate, stockCode, stockInvestorType, stockInvestorTypeDetail, stockAmount) VALUES (%s, %s, %s, %s, %s)"
+                    insert = "INSERT IGNORE INTO stockInstitutionalInvestor (stockDate, stockCode, stockInvestorType, stockInvestorTypeDetail, stockAmount) VALUES (%s, %s, %s, %s, %s)"
                     cur.executemany(insert, insInvestArray)
                     cur.close()
                     conn.commit()
@@ -239,8 +266,10 @@ class stockClass(object):
                     cur.close()
                     conn.close()
 
+    #SELECT stockDate, COUNT(stockDate) FROM stockdata GROUP BY stockDate ORDER BY stockDate DESC
     def retrieveStockData(self, stockCodes, fromCode, endCode, offset, fetchDate):
         # global globalTimeout
+        updateVolume = False
 
         print('>>>>>', fromCode, ctime(), '<<<<<')
 
@@ -341,7 +370,10 @@ class stockClass(object):
                                         stockDataArray.append((stock, splitDate, data[6], data[1]))
                                     elif fetchDate == "":
                                         # stockDataArray.append((stock, splitDate, data[1]))
-                                        stockDataArray.append((stock, splitDate, data[6], data[1]))
+                                        if not updateVolume:
+                                            stockDataArray.append((stock, splitDate, data[6], data[1]))
+                                        else:
+                                            stockDataArray.append((data[1], stock, splitDate))
 
                             print(stockDataArray)
                             # succeed = True
@@ -350,8 +382,11 @@ class stockClass(object):
                                 try:
                                     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                                     cur = conn.cursor()
-                                    insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
-                                    cur.executemany(insert, stockDataArray)
+                                    if not updateVolume:
+                                        insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
+                                        cur.executemany(insert, stockDataArray)
+                                    else:
+                                        cur.executemany("UPDATE stockdata SET stockVolume=%s WHERE stockCode=%s AND stockDate=%s", stockDataArray)
                                     cur.close()
                                     conn.commit()
                                     conn.close()
@@ -387,10 +422,14 @@ class stockClass(object):
                 if fetchDate == "":
                     sql = "SELECT * FROM stockdata WHERE stockcode=%s ORDER BY stockDate ASC"
                 else:
-                    sql = "SELECT * FROM stockdata WHERE stockcode=%s ORDER BY stockDate DESC LIMIT 9"
+                    sql = "SELECT * FROM stockdata WHERE stockcode=%s AND stockdate<=%s ORDER BY stockDate DESC LIMIT 9"
 
                 try:
-                    cursor.execute(sql, (stock))
+                    if fetchDate=='':
+                        cursor.execute(sql, (stock))
+                    else:
+                        hyphenDate = datetime.datetime.strptime(fetchDate, '%Y%m%d').strftime('%Y-%m-%d')
+                        cursor.execute(sql, (stock, hyphenDate))
                     # Fetch all the rows in a list of lists.
                     results = cursor.fetchall()
                     for row in results:
@@ -666,7 +705,7 @@ class stockClass(object):
         cursor = conn.cursor()
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
-        whiteList = ['8429']
+        whiteList = ['2324','8429']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
@@ -700,7 +739,7 @@ class stockClass(object):
         stockCodeIndicesBackup = copy.deepcopy(stockCodeIndices)
 
         #*** Output to a CSV file
-        for f in glob.glob("potentialStocks\-*\.*"):
+        for f in glob.glob("potentialStocks-*"):
             os.remove(f)
         now = datetime.datetime.now()
         file = open('potentialStocks-'+now.strftime("%Y-%m-%d")+'.csv', 'w', newline='')
