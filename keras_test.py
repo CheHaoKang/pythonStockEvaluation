@@ -71,9 +71,10 @@ def normalize_data_with_imported_mean_std(data, mean, std, to_or_back='to'):
 
     return data
 
-def getStockData(stockCode):
-    skipColumns = 2 # skip stockCode and stockDate
-    sql = 'SELECT stockCode,stockIndex,stockVolume,stockDate FROM stockdata WHERE stockCode=%s AND stockIndex>0 ORDER BY stockDate ASC'
+def getStockData(stockCode, features):
+    skipColumns = start_index = 2 # skip stockCode and stockDate
+    num_features = len(features)
+    sql = 'SELECT stockCode,stockDate,' + ','.join(features) + ' FROM stockdata WHERE stockCode=%s AND stockIndex>0 ORDER BY stockDate ASC'
     # sql = 'SELECT stockCode,stockIndex,stockDate FROM stockdata WHERE stockCode="0050" AND stockDate <= \'2018-07-31\' ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
@@ -85,7 +86,8 @@ def getStockData(stockCode):
     stockData_with_date = np.zeros((len(results), len(results[0])))
     for i,row in enumerate(results):
         # stockData.append([row[0], row[1], str(row[2])])
-        stockData[i,:] = [row[1], float( row[2].replace(',','') )]
+        # stockData[i,:] = [row[1], float( row[2].replace(',','') )]
+        stockData[i,:] = [ row[j] if isinstance(row[j], float) else float( row[j].replace(',','') ) for j in range(start_index, start_index+num_features) ]
         # stockData_with_date[i,:] = [row[0],str(row[2]).replace('-',''),row[1]]
 
     cursor.close()
@@ -94,8 +96,8 @@ def getStockData(stockCode):
     # print(stockData)
     return stockData, stockData_with_date
 
-def get_stockData_with_stockCode_days(stockCode, days, from_which_date):
-    sql = 'SELECT * FROM (SELECT stockCode,stockDate,stockIndex,stockVolume FROM stockdata WHERE stockCode=%s AND stockDate<=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC ORDER BY stockDate ASC'
+def get_stockData_with_stockCode_days(stockCode, days, from_which_date, features):
+    sql = 'SELECT * FROM (SELECT stockCode,stockDate,' + ','.join(features) + ' FROM stockdata WHERE stockCode=%s AND stockDate<=%s ORDER BY stockDate DESC LIMIT %s) AS sDDESC ORDER BY stockDate ASC'
 
     conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     cursor = conn.cursor()
@@ -104,7 +106,7 @@ def get_stockData_with_stockCode_days(stockCode, days, from_which_date):
     ### start_index defines which SQL parameter to start from
     ### num_features defines "from start_index, how many parameters to be used"
     start_index = 2
-    num_features = 2
+    num_features = len(features)
     ###___
 
     results = cursor.fetchall()
@@ -218,9 +220,10 @@ if __name__ == "__main__":
         exit(0)
 
     # stockCodes = ['3312']
+    features = ['stockIndex', 'stockVolume']
     for oneStock in stockCodes:
         print('>>>', oneStock, '<<<')
-        stockData, stockData_with_date = getStockData(oneStock)
+        stockData, stockData_with_date = getStockData(oneStock, features)
 
         num_parts = 5
         train_parts = 4
@@ -283,13 +286,13 @@ if __name__ == "__main__":
 
         # drawEvaluationDiagram(history)
 
-        stockData_with_stockCode_days = get_stockData_with_stockCode_days(oneStock, lookback, updatedDate)
+        stockData_with_stockCode_days = get_stockData_with_stockCode_days(oneStock, lookback, updatedDate, features)
         print(stockData_with_stockCode_days)
         normalized_data = normalize_data_with_imported_mean_std(stockData_with_stockCode_days, mean, std)
         predictions = model.predict( normalized_data )
         # print(predictions, [mean[0]], [std[0]])
         revert_normalized_data = float( normalize_data_with_imported_mean_std(predictions, [mean[0]], [std[0]], 'back')[0][0] )
-        # print( oneStock, updatedDate, revert_normalized_data )
+        print( oneStock, updatedDate, revert_normalized_data )
         updatePrediction(oneStock, updatedDate, revert_normalized_data)
     ##################
 
