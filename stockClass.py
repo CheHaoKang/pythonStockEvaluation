@@ -1,5 +1,8 @@
 # -*- coding: UTF-8 -*-
 
+'''For the test purpose, unmark lines with '# for test' and mark '# formal'
+'''
+
 from fake_useragent import UserAgent
 from lxml import etree
 import collections
@@ -27,6 +30,9 @@ import jieba
 from operator import itemgetter
 # from pylab import mpl
 import glob
+import matplotlib
+
+# print(matplotlib.matplotlib_fname())
 #
 # mpl.rcParams['font.sans-serif'] = ['SimHei'] #將預設字體改用SimHei字體
 
@@ -706,9 +712,11 @@ class stockClass(object):
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
         whiteList = ['2324','8429']
+        # whiteList = ['0050']
         for stock in stockCodeCurrentindex:
             try:
-                if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:
+                if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:  # formal
+                # if stock in whiteList:  # for test
                     while True:
                         try:
                             # Execute the SQL command
@@ -922,14 +930,21 @@ class stockClass(object):
             stockInfoDict['amount'] = stockInfoDict['amount'][::-1]
             stockInfoDict['dailyAmount'] = stockInfoDict['dailyAmount'][::-1]
 
-            # print(stockInfoDict)
+            # print(stockInfoDict['index'])
 
-            plt.setp(subplot1, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1])#, ylabel='score')
+            # Add stockPrediction
+            cursor.execute('SELECT stockCode, stockPrediction FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT 1', (stock))
+            results = cursor.fetchall()
+            for row in results:
+                stockInfoDict['index'].append(float(row[1]))
+
+            xtickLabels.append('Next')
+            plt.setp(subplot1, xticks=[i for i in range(1, days+1+1)], xticklabels=xtickLabels, xlim=[0, days+1+1])#, ylabel='score')  # the last +1 is for stockPrediction
             # plt.xticks(rotation=10)
             for tick in subplot1.get_xticklabels():
                 tick.set_rotation(20)
-            pL11 = subplot1.plot(x, stockInfoDict['index'], '', label='stockIndex', zorder=10)
-            for xCor, yCor in zip(x, stockInfoDict['index']):
+            pL11 = subplot1.plot([i for i in range(1, days+1+1)], stockInfoDict['index'], '', label='stockIndex', zorder=10)  # the last +1 is for stockPrediction
+            for xCor, yCor in zip([i for i in range(1, days+1+1)], stockInfoDict['index']):  # the last +1 is for stockPrediction
                 subplot1.text(xCor, yCor, str(yCor), weight='bold')
                 # subplot1.text(xCor-0.2, yCor-0.06, str(yCor), weight='bold')
             pL12 = subplot1.plot(x, stockInfoDict['ma18'], '', label='stockMA18', zorder=10)
@@ -966,7 +981,7 @@ class stockClass(object):
                 maxAmount = max(stockInfoDict['dailyAmount'])*1.1
             else:
                 maxAmount = 10000
-            plt.setp(pLBar, xticks=x, xticklabels=xtickLabels, xlim=[0, days+1], ylim=[0, maxAmount])
+            plt.setp(pLBar, xticks=[i for i in range(1, days+1+1)], xticklabels=xtickLabels, xlim=[0, days+1+1], ylim=[0, maxAmount])  # the last +1 is for stockPrediction
 
             print(stockInfoDict)
 

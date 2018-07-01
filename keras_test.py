@@ -11,44 +11,13 @@
 	stockData[0, counter] = np.asarray([ row[i] if isinstance(row[i], float) else float( row[i].replace(',','') ) for i in range(start_index, start_index+num_features) ] )
 Add more features___'''
 
-import pickle
-import requests
 import pymysql.cursors
-import json
-import csv
-import sys,traceback
-import datetime
-# from fake_useragent import UserAgent
-import time
-import threading
-from time import sleep,ctime
-# from openpyxl.styles import Font, Color
+import traceback
 from stockClass import *
-# from openpyxl import Workbook
-from datetime import date
-# import jieba
-import re
-from operator import itemgetter
-import glob, os
-# from keras.datasets import boston_housing
-# from keras.datasets import reuters
-# from keras.preprocessing.text import Tokenizer
 from keras.models import Sequential
 from keras import layers
 from keras.optimizers import RMSprop
 import matplotlib.pyplot as plt
-from keras.models import load_model
-
-def drawEvaluationDiagram(history):
-    loss = history.history['loss']
-    val_loss = history.history['val_loss']
-    epochs = range(1, len(loss) + 1)
-    plt.figure()
-    plt.plot(epochs, loss, 'bo', label='Training loss')
-    plt.plot(epochs, val_loss, 'b', label='Validation loss')
-    plt.title('Training and validation loss')
-    plt.legend()
-    plt.show()
 
 def normalizeData(data, train_length):
     mean = data[:train_length].mean(axis=0)
@@ -211,7 +180,7 @@ def ifUpdateAvailable(stockDate):
 
 if __name__ == "__main__":
     ##################
-    updatedDate = '2018-06-15'
+    updatedDate = '2018-06-29'
     stockCodes = getStockCodesByDate(updatedDate, '0')
     # stockCodes = getStockCodesByDate(updatedDate, '3312')
     # updatedDate = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -220,7 +189,7 @@ if __name__ == "__main__":
         exit(0)
 
     # stockCodes = ['3312']
-    features = ['stockIndex', 'stockVolume']
+    features = ['stockIndex', 'stockVolume', 'stockK', 'stockD']
     for oneStock in stockCodes:
         print('>>>', oneStock, '<<<')
         stockData, stockData_with_date = getStockData(oneStock, features)

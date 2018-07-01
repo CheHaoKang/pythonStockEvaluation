@@ -22,11 +22,11 @@ import glob, os
 # from keras.datasets import boston_housing
 # from keras.datasets import reuters
 # from keras.preprocessing.text import Tokenizer
-from keras.models import Sequential
-from keras import layers
-from keras.optimizers import RMSprop
-import matplotlib.pyplot as plt
-from keras.models import load_model
+# from keras.models import Sequential
+# from keras import layers
+# from keras.optimizers import RMSprop
+# import matplotlib.pyplot as plt
+# from keras.models import load_model
 
 def drawEvaluationDiagram(history):
     loss = history.history['loss']
@@ -133,7 +133,80 @@ def updatePrediction(stockCode, stockDate, stockPrediciton):
     conn.close()
 
 if __name__ == "__main__":
-    updatePrediction('0050', '2018-06-08', 2.5)
+    import jieba
+
+    sentence = jieba.strdecode('在 Python3 中，每個字串都是 Unicode，不使用內部編碼表現，而使用 str 實例作為代表。如果想將字串轉為指定的編碼實作，可以使用 encode() 方法取得一個 bytes 實例，如果有個 bytes 實例，也可以使用 decode() 方法指定編碼取得 str 實例')
+
+    special = 'S'
+    special_index_list = []
+    ns = ''
+    for ch_index in range(0, len(sentence)):
+        if sentence[ch_index] == ' ':
+            ns += special
+            special_index_list.append(ch_index)
+        else:
+            ns += sentence[ch_index]
+
+    re_han = jieba.re_han_cut_all
+
+    # split the ns
+    blocks = re_han.split(ns)
+
+    # print(blocks)
+
+    for special_index in special_index_list:
+        stacked_blk_len = 0
+        for blk_index in range(0, len(blocks)):
+            blk = blocks[blk_index]
+            old_len = stacked_blk_len
+            stacked_blk_len += len(blk)
+            if stacked_blk_len - 1 >= special_index:
+                blk = blk[:special_index - old_len] + " " + blk[special_index - old_len + 1:]
+                blocks[blk_index] = blk
+                break
+
+    # print(blocks)
+
+    for blk_index in range(0, len(blocks)):
+        blocks[blk_index] = blocks[blk_index].strip()
+
+    print(sentence)
+    print(blocks)
+
+    dt = jieba.dt
+    re_skip = jieba.re_skip_default
+    cut_block = dt._Tokenizer__cut_all
+
+    cut_all = False
+
+    for blk in blocks:
+        if not blk:
+            continue
+        if re_han.match(blk):
+            print('blkRE_HAN:', blk)
+            for word in cut_block(blk):
+                print('1', word)
+        else:
+            print('blk:', blk)
+            tmp = re_skip.split(blk)
+            for x in tmp:
+                if re_skip.match(x):
+                    print('2', x)
+                elif not cut_all:
+                    for xx in x:
+                        print('3', xx)
+                else:
+                    print('4', x)
+
+    # re_han_default = re.compile("([\u4E00-\u9FD5a-zA-Z0-9+#&\._%]+)", re.U)
+    # re_han_cut_all = re.compile("([\u4E00-\u9FD5]+)", re.U)
+    # blocks = re_han_default.split('因此上例最後是顯示 2，表示兩個字元，而不是像 Python 2.x 中')
+    # print(blocks)
+
+    # jieba.dt.FREQ, jieba.dt.total = jieba.dt.gen_pfdict(jieba.dt.get_dict_file())
+    # print(jieba.dt.FREQ, jieba.dt.total)
+
+    # updatePrediction('0050', '2018-06-08', 2.5)
 
     # print(stockData_with_stockCode_days)
     # stockData, stockData_with_date = getStockData('0050')
