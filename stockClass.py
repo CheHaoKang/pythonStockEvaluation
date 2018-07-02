@@ -178,10 +178,10 @@ class stockClass(object):
                 s = json.loads(res.text)
                 if 'data' in s:
                     for data in s['data']:
-                        insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerSelf', data[2].strip().replace(",", "")))
-                        insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerSelf', ('' if data[3].strip().replace(",", "") == '0' else '-') + data[3].strip().replace(",", "")))
-                        insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerHedging', data[5].strip().replace(",", "")))
-                        insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerHedging', ('' if data[6].strip().replace(",", "") == '0' else '-') + data[6].strip().replace(",", "")))
+                        # insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerSelf', data[2].strip().replace(",", "")))
+                        # insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerSelf', ('' if data[3].strip().replace(",", "") == '0' else '-') + data[3].strip().replace(",", "")))
+                        # insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerHedging', data[5].strip().replace(",", "")))
+                        # insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealerHedging', ('' if data[6].strip().replace(",", "") == '0' else '-') + data[6].strip().replace(",", "")))
                         insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealer', data[8].strip().replace(",", "")))
                         insInvestArray.append((hyphenDate, data[0].strip(), 'dealer', 'dealer', ('' if data[9].strip().replace(",", "") == '0' else '-') + data[9].strip().replace(",", "")))
                     succeed = True
@@ -933,18 +933,23 @@ class stockClass(object):
             # print(stockInfoDict['index'])
 
             # Add stockPrediction
-            cursor.execute('SELECT stockCode, stockPrediction FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT 1', (stock))
-            results = cursor.fetchall()
-            for row in results:
-                stockInfoDict['index'].append(float(row[1]))
+            stock_prediction = False
+            stock_prediction_add = 0
+            if stock_prediction:
+                cursor.execute('SELECT stockCode, stockPrediction FROM stockdata WHERE stockCode=%s ORDER BY stockDate DESC LIMIT 1', (stock))
+                results = cursor.fetchall()
+                for row in results:
+                    stockInfoDict['index'].append(float(row[1]))
 
-            xtickLabels.append('Next')
-            plt.setp(subplot1, xticks=[i for i in range(1, days+1+1)], xticklabels=xtickLabels, xlim=[0, days+1+1])#, ylabel='score')  # the last +1 is for stockPrediction
+                xtickLabels.append('Next')
+                stock_prediction_add = 1
+
+            plt.setp(subplot1, xticks=[i for i in range(1, days+1+stock_prediction_add)], xticklabels=xtickLabels, xlim=[0, days+1+stock_prediction_add])#, ylabel='score')  # the last +1 is for stockPrediction
             # plt.xticks(rotation=10)
             for tick in subplot1.get_xticklabels():
                 tick.set_rotation(20)
-            pL11 = subplot1.plot([i for i in range(1, days+1+1)], stockInfoDict['index'], '', label='stockIndex', zorder=10)  # the last +1 is for stockPrediction
-            for xCor, yCor in zip([i for i in range(1, days+1+1)], stockInfoDict['index']):  # the last +1 is for stockPrediction
+            pL11 = subplot1.plot([i for i in range(1, days+1+stock_prediction_add)], stockInfoDict['index'], '', label='stockIndex', zorder=10)  # the last +1 is for stockPrediction
+            for xCor, yCor in zip([i for i in range(1, days+1+stock_prediction_add)], stockInfoDict['index']):  # the last +1 is for stockPrediction
                 subplot1.text(xCor, yCor, str(yCor), weight='bold')
                 # subplot1.text(xCor-0.2, yCor-0.06, str(yCor), weight='bold')
             pL12 = subplot1.plot(x, stockInfoDict['ma18'], '', label='stockMA18', zorder=10)
@@ -981,7 +986,7 @@ class stockClass(object):
                 maxAmount = max(stockInfoDict['dailyAmount'])*1.1
             else:
                 maxAmount = 10000
-            plt.setp(pLBar, xticks=[i for i in range(1, days+1+1)], xticklabels=xtickLabels, xlim=[0, days+1+1], ylim=[0, maxAmount])  # the last +1 is for stockPrediction
+            plt.setp(pLBar, xticks=[i for i in range(1, days+1+stock_prediction_add)], xticklabels=xtickLabels, xlim=[0, days+1+stock_prediction_add], ylim=[0, maxAmount])  # the last +1 is for stockPrediction
 
             print(stockInfoDict)
 
