@@ -16,7 +16,8 @@ import traceback
 from stockClass import *
 from keras.models import Sequential
 from keras import layers
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop,adam
+from keras.models import load_model
 import matplotlib.pyplot as plt
 
 def normalizeData(data, train_length):
@@ -180,7 +181,13 @@ def ifUpdateAvailable(stockDate):
 
 if __name__ == "__main__":
     ##################
-    updatedDate = '2018-06-29'
+    save_model = True
+
+    if len(sys.argv)>1:
+        updatedDate = sys.argv[1]
+    else:
+        now = datetime.datetime.now()
+        updatedDate = now.strftime("%Y-%m-%d")
     stockCodes = getStockCodesByDate(updatedDate, '0')
     # stockCodes = getStockCodesByDate(updatedDate, '3312')
     # updatedDate = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -188,7 +195,8 @@ if __name__ == "__main__":
     if not stockCodes:
         exit(0)
 
-    # stockCodes = ['3312']
+    # stockCodes = ['1587', '1760', '2630', '4566', '4989', '6288', '6416', '6581', '6625', '8497']
+    # stockCodes = ['0050']
     features = ['stockIndex', 'stockVolume', 'stockK', 'stockD']
     for oneStock in stockCodes:
         print('>>>', oneStock, '<<<')
@@ -209,49 +217,75 @@ if __name__ == "__main__":
         batch_size = 10
         step = 1
         # generator(stockData, lookback, delay, 0, None, False, batch_size, step)
-        train_gen   = generator(normalizeStockData,
-                              lookback=lookback,
-                              delay=delay,
-                              min_index=0,
-                              max_index=part_num*train_parts-1,
-                              shuffle=False,
-                              step=step,
-                              batch_size=batch_size)
-        val_gen     = generator(normalizeStockData,
-                              lookback=lookback,
-                              delay=delay,
-                              min_index=part_num*train_parts,
-                              max_index=part_num*(train_parts+val_parts)-1,
-                              shuffle=False,
-                              step=step,
-                              batch_size=batch_size)
-        test_gen    = generator(normalizeStockData,
-                                lookback=lookback,
-                                delay=delay,
-                                min_index=part_num*(train_parts+val_parts),
-                                max_index=None,
-                                shuffle=False,
-                                step=step,
-                                batch_size=batch_size)
-        val_steps = int( ( part_num*(train_parts+val_parts)+1 - part_num*train_parts - lookback - delay ) / batch_size )
-        test_steps = int( ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback - delay ) / batch_size )
 
-        steps_per_epoch = int(part_num*train_parts/batch_size)
-        model = Sequential()
-        model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))
-        model.add(layers.Dense(32, activation='relu'))
-        model.add(layers.Dense(1))
-        model.compile(optimizer=RMSprop(), loss='mae')
+        if not os.path.exists('stock_model/stock_' + oneStock + '_model.h5'):
+            train_gen   = generator(normalizeStockData,
+                                  lookback=lookback,
+                                  delay=delay,
+                                  min_index=0,
+                                  max_index=part_num*train_parts-1,
+                                  shuffle=False,
+                                  step=step,
+                                  batch_size=batch_size)
+            val_gen     = generator(normalizeStockData,
+                                  lookback=lookback,
+                                  delay=delay,
+                                  min_index=part_num*train_parts,
+                                  max_index=part_num*(train_parts+val_parts)-1,
+                                  shuffle=False,
+                                  step=step,
+                                  batch_size=batch_size)
+            test_gen    = generator(normalizeStockData,
+                                    lookback=lookback,
+                                    delay=delay,
+                                    min_index=part_num*(train_parts+val_parts),
+                                    max_index=None,
+                                    shuffle=False,
+                                    step=step,
+                                    batch_size=batch_size)
+            val_steps = int( ( part_num*(train_parts+val_parts)+1 - part_num*train_parts - lookback - delay ) / batch_size )
+            test_steps = int( ( len(normalizeStockData) - part_num*(train_parts+val_parts) - lookback - delay ) / batch_size )
 
-        try:
-            history = model.fit_generator(train_gen,
-                                          steps_per_epoch=steps_per_epoch,
-                                          epochs=20,
-                                          validation_data=val_gen,
-                                          validation_steps=val_steps)
-        except:
-            traceback.print_exc(file=sys.stdout)
-            continue
+            steps_per_epoch = int(part_num*train_parts/batch_size)
+            model = Sequential()
+            model.add(layers.Flatten(input_shape=(lookback // step, normalizeStockData.shape[-1])))  #1
+            model.add(layers.Dense(32, activation='relu'))  #1
+            model.add(layers.Dense(1))  #1
+            # model.add(layers.GRU(32, input_shape=(None, normalizeStockData.shape[-1])))  #2
+            # model.add(layers.Dense(1))  #2
+            # model.add(layers.GRU(32,
+            #                      dropout=0.2,
+            #                      recurrent_dropout=0.2,
+            #                      input_shape=(None, normalizeStockData.shape[-1])))  #3
+            # model.add(layers.Dense(1))  #3
+            # model.add(layers.GRU(32,
+            #                      dropout=0.1,
+            #                      recurrent_dropout=0.5,
+            #                      return_sequences=True,
+            #                      input_shape=(None, normalizeStockData.shape[-1])))  #4
+            # model.add(layers.GRU(64, activation='relu',
+            #                      dropout=0.1,
+            #                      recurrent_dropout=0.5))  #4
+            # model.add(layers.Dense(1))  #4
+            # model.add(layers.Bidirectional(
+            #     layers.GRU(32, dropout=0.1, recurrent_dropout=0.5), input_shape=(None, normalizeStockData.shape[-1])))  #5
+            # model.add(layers.Dense(1))  #5
+            # model.compile(optimizer=adam(), loss='mae')
+            model.compile(optimizer=RMSprop(), loss='mae')
+
+            try:
+                history = model.fit_generator(train_gen,
+                                              steps_per_epoch=steps_per_epoch,
+                                              # epochs=20,  #1, 2
+                                              epochs=40,  #3, 4, 5
+                                              validation_data=val_gen,
+                                              validation_steps=val_steps)
+            except:
+                traceback.print_exc(file=sys.stdout)
+                continue
+        else:
+            save_model = False
+            model = load_model('stock_model/stock_' + oneStock + '_model.h5')
 
         # drawEvaluationDiagram(history)
 
@@ -263,7 +297,12 @@ if __name__ == "__main__":
         revert_normalized_data = float( normalize_data_with_imported_mean_std(predictions, [mean[0]], [std[0]], 'back')[0][0] )
         print( oneStock, updatedDate, revert_normalized_data )
         updatePrediction(oneStock, updatedDate, revert_normalized_data)
-    ##################
+
+        if save_model:
+            if not os.path.exists('stock_model'):
+                os.makedirs('stock_model')
+            model.save('stock_model/stock_' + oneStock + '_model.h5')
+        ##################
 
     # with open('trainHistoryDict.pickle', 'wb') as file_pi:
     #     pickle.dump(history.history, file_pi)

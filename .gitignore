@@ -5,3 +5,5 @@ potentialStocks-*xlsx
 stockDrawing*.png
 pythonStockEvaluation*
 python.log
+stock_model
+web_page/static/stockDrawing*.png

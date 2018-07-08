@@ -865,7 +865,7 @@ class stockClass(object):
         stockCodeIndices = copy.deepcopy(stockCodeIndicesBackup)
 
         #*** Draw diagrams
-        for f in glob.glob("stockDrawing_*.png"):
+        for f in glob.glob("web_page/static/stockDrawing_*.png"):
             os.remove(f)
 
         days = 14
@@ -1028,7 +1028,7 @@ class stockClass(object):
             lgd2 = subplot2.legend(h2, l2, loc=3, fancybox=False, shadow=False, ncol=1) # http://matplotlib.org/users/legend_guide.html
 
             fig.tight_layout()
-            fig.savefig('stockDrawing_' + stock + '_' + stockCodeNames[stock][0] + '.png', bbox_inches='tight')
+            fig.savefig('web_page/static/stockDrawing_' + stock + '_' + stockCodeNames[stock][0] + '.png', bbox_inches='tight')
             plt.close(fig)
         #___ Draw diagrams
 
