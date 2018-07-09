@@ -1,0 +1,3 @@
+[submodule "flask-stock-decken"]
+	path = flask-stock-decken
+	url = git@github.com:CheHaoKang/flask-stock-decken.git

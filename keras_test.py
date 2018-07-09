@@ -181,8 +181,6 @@ def ifUpdateAvailable(stockDate):
 
 if __name__ == "__main__":
     ##################
-    save_model = True
-
     if len(sys.argv)>1:
         updatedDate = sys.argv[1]
     else:
@@ -196,10 +194,10 @@ if __name__ == "__main__":
         exit(0)
 
     # stockCodes = ['1587', '1760', '2630', '4566', '4989', '6288', '6416', '6581', '6625', '8497']
-    # stockCodes = ['0050']
     features = ['stockIndex', 'stockVolume', 'stockK', 'stockD']
     for oneStock in stockCodes:
         print('>>>', oneStock, '<<<')
+        save_model = True
         stockData, stockData_with_date = getStockData(oneStock, features)
 
         num_parts = 5
