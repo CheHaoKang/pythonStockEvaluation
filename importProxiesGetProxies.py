@@ -62,7 +62,7 @@ def getProxy(html):
         conn.close()
 
 if __name__ == "__main__":
-    importProxies('[gatherproxy.com]proxies_2018_06_12.txt')
+    importProxies('[gatherproxy.com]proxies_2018_07_10.txt')
     # # driver = webdriver.PhantomJS(service_args=["--remote-debugger-port=9000"])
     # driver = webdriver.PhantomJS()
     # driver.implicitly_wait(10)
