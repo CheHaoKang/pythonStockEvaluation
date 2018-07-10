@@ -12,3 +12,8 @@ mysqldump -u root -p89787198 stockevaluation stocknewscomments > C:\\Users\\blue
 
 cd /d "C:\Users\blueplanet\PycharmProjects\pythonStockEvaluation"
 C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveLowestIndexCurrentIndex "%date:~0,4%%date:~5,2%%date:~8,2%"
+
+cd /d "C:\Users\blueplanet\PycharmProjects\pythonStockEvaluation\flask-stock-decken"
+git add .
+git commit -a -m "stock diagrams %date:~0,4%%date:~5,2%%date:~8,2%"
+git push origin master
