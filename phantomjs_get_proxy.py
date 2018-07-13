@@ -7,23 +7,23 @@ import re
 import pymysql.cursors
 
 def importProxies(fileName):
-	conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
-	cur = conn.cursor()
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    cur = conn.cursor()
 
-	with open(fileName, 'r', encoding='UTF-8') as file:
-		for line in file:
-			try:
-				insert = "INSERT IGNORE INTO stockproxies (proxyIPPort, proxyFailtimes, proxyReponseperiod) VALUES (%s, 0, '0')"
-				cur.execute(insert, line.strip())
-			except:
-				print("Unexpected error:", sys.exc_info()[0])
-				cur.close()
-				conn.close()
-				raise
+    with open(fileName, 'r', encoding='UTF-8') as file:
+        for line in file:
+            try:
+                insert = "INSERT IGNORE INTO stockproxies (proxyIPPort, proxyFailtimes, proxyReponseperiod) VALUES (%s, 0, '0')"
+                cur.execute(insert, line.strip())
+            except:
+                print("Unexpected error:", sys.exc_info()[0])
+                cur.close()
+                conn.close()
+                raise
 
-	cur.close()
-	conn.commit()
-	conn.close()
+    cur.close()
+    conn.commit()
+    conn.close()
 
 def getProxy(html):
     reGetProxyIPPort = re.compile(r'script>([\d\.]+)</td')
