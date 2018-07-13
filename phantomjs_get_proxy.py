@@ -61,7 +61,29 @@ def getProxy(html):
         cur.close()
         conn.close()
 
+def get_now_proxies_num():
+    try:
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198',
+                               db='stockevaluation', charset="utf8")
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(1) AS counter FROM stockproxies')
+        results = cur.fetchall()
+        for row in results:
+            now_proxies_num = row[0]
+        cur.close()
+        conn.commit()
+        conn.close()
+    except:
+        print("Unexpected error:", sys.exc_info())
+        cur.close()
+        conn.close()
+
+    return now_proxies_num
+
 if __name__ == "__main__":
+    add_threshold = 100
+    before_now_proxies_num = int(get_now_proxies_num())
+
     # driver = webdriver.PhantomJS(service_args=["--remote-debugger-port=9000"])
     driver = webdriver.PhantomJS()
     driver.implicitly_wait(10)
@@ -79,6 +101,9 @@ if __name__ == "__main__":
             html = etree.HTML(driver.page_source)
             getProxy(html)
             i += 1
+
+            if int(get_now_proxies_num()) - before_now_proxies_num >= add_threshold:
+                break
     except:
         print("Unexpected error:", sys.exc_info())
 
