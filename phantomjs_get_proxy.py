@@ -81,7 +81,12 @@ def get_now_proxies_num():
     return now_proxies_num
 
 if __name__ == "__main__":
-    add_threshold = 100
+    if len(sys.argv) < 2:
+        print("Please specify how many proxies you want.")
+        exit(1)
+    else:
+        add_threshold = int(sys.argv[1])
+
     before_now_proxies_num = int(get_now_proxies_num())
 
     # driver = webdriver.PhantomJS(service_args=["--remote-debugger-port=9000"])
