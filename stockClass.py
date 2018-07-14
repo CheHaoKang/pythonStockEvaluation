@@ -303,7 +303,9 @@ class stockClass(object):
             fromMonth = now.month
             endMonth = 0
 
-        for i in range(fromCode, endCode):
+        i = fromCode  # this is the list index of one stock
+        add_num = 0 if self.training else 1
+        while i < endCode:
             # for stock in stockCodes:
             stock = stockCodes[i]
             self.updateStockFinished(stock, 'ing')
@@ -424,6 +426,7 @@ class stockClass(object):
                         time.sleep(1)
 
             self.updateStockFinished(stock, 'yes')
+            i += add_num
 
     def computeStockKD(self, stockCodes, fromCode, endCode, offset, fetchDate):
         print('#####', fromCode, ctime(), '#####')
