@@ -50,9 +50,10 @@ class stockClass(object):
 	# globalTimeout = 5
 	# globalThreadAmount = 5
 
-    def __init__(self, timeout, threadAmount):
+    def __init__(self, timeout, threadAmount, training):
         self.timeout = timeout
         self.threadAmount = threadAmount
+        self.training = training
 
     def getStockCodes(self):
         sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
@@ -90,18 +91,25 @@ class stockClass(object):
     def getProxy(self, offset):
         # global globalTimeout
 
+        training_proxy_sql = ''
+        if self.training:
+            training_proxy_sql = ' AND proxyUsedTimes=0'
+
         while True:
             try:
                 conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
                 cur = conn.cursor()
                 sql = """SELECT proxyIPPort FROM (
-                    SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
-                    WHERE proxyAvgReponseperiod<%s ORDER BY formula ASC, sid ASC LIMIT 1 OFFSET %s"""
+                    SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyUsedTimes, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
+                    WHERE proxyAvgReponseperiod<%s""" + training_proxy_sql + """ ORDER BY formula ASC, sid ASC LIMIT 1 OFFSET %s"""
                 # sql = """SELECT proxyIPPort FROM (
                 #     SELECT sid, proxyIPPort, proxyAvgReponseperiod, proxyFailtimes*proxyAvgReponseperiod AS formula FROM stockproxies) AS proxyFormula
                 #     ORDER BY formula ASC, sid ASC LIMIT 1"""
                 cur.execute(sql, (self.timeout, offset))
                 proxy = cur.fetchone()
+
+                if self.training and not proxy:
+                    exit('No unused proxies available. End training...')
 
                 cur.close()
                 conn.commit()
