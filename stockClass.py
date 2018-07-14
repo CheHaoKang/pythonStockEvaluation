@@ -109,7 +109,8 @@ class stockClass(object):
                 proxy = cur.fetchone()
 
                 if self.training and not proxy:
-                    exit('No unused proxies available. End training...')
+                    print('No unused proxies available. End training...')
+                    os.kill(os.getpid(), 9)
 
                 cur.close()
                 conn.commit()
@@ -336,6 +337,10 @@ class stockClass(object):
                         # while not fetchSucceed:
                         while True:
                             try:
+                                if self.training:
+                                    nowProxy = self.getProxy(offset)
+                                    proxies = {"http": "http://" + nowProxy}
+
                                 start = time.time()
                                 res = requests.get(url_twse, headers=header, proxies=proxies, timeout=self.timeout)
                                 end = time.time()
