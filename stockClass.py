@@ -94,6 +94,7 @@ class stockClass(object):
         training_proxy_sql = ''
         if self.training:
             training_proxy_sql = ' AND proxyUsedTimes=0'
+            offset = 0
 
         while True:
             try:
