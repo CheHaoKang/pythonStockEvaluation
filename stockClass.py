@@ -658,6 +658,23 @@ class stockClass(object):
         cur.close()
         conn.close()
 
+    def move_today_potential_to_yesterday_potential(self):
+        # Move stockIsTodayPotential to stockIsYesterdayPotential of stocktable
+        while True:
+            try:
+                # Execute the SQL command
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cursor = conn.cursor()
+                cursor.execute('UPDATE stocktable SET stockIsYesterdayPotential=stockIsTodayPotential')
+                cursor.execute('UPDATE stocktable SET stockIsTodayPotential=0')
+                break
+            except:
+                print("Error: unable to fecth data")
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
     def retrieveLowestIndexCurrentIndex(self,date):
         #*** Get lowest indices
         sql = """SELECT sd.stockcode, sd.stockdate, sd.stockindex, sd.stockK, sd.stockD, sd.stockMA18, sd.stockMA50
@@ -684,6 +701,8 @@ class stockClass(object):
             except:
                 print("Error: unable to fecth data")
         #___ Get lowest indices
+
+        self.move_today_potential_to_yesterday_potential()
 
         #*** Get current indices
         sql = """SELECT * FROM stockdata sd INNER JOIN (
@@ -728,7 +747,7 @@ class stockClass(object):
         cursor = conn.cursor()
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
-        whiteList = ['2324','8429']
+        # whiteList = ['2324','8429']
         # whiteList = ['0050']
         for stock in stockCodeCurrentindex:
             try:
@@ -1048,6 +1067,16 @@ class stockClass(object):
             fig.savefig('flask-stock-decken/static/stockDrawing_' + stock + '_' + stockCodeNames[stock][0] + '.png', bbox_inches='tight')
             plt.close(fig)
         #___ Draw diagrams
+
+            # Save today's potential stocks in table 'stocktable'
+            while True:
+                try:
+                    sql = "UPDATE stocktable SET stockIsTodayPotential=1 WHERE stockCode=%s"
+                    cursor.execute(sql, (stock))
+                    conn.commit()
+                    break
+                except:
+                    print("Unexpected error:", sys.exc_info())
 
         conn.commit()
         cursor.close()
