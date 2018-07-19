@@ -352,7 +352,7 @@ class stockClass(object):
                                 #     nowProxy = self.getProxy(offset)
                                 #     proxies = {"http": "http://" + nowProxy}
 
-                                print(res.text)
+                                print(stock + '===>' + res.text)
                                 s = json.loads(res.text)
                                 # fetchSucceed = True
 
