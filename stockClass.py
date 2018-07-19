@@ -748,7 +748,7 @@ class stockClass(object):
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
         # whiteList = ['2324','8429']
-        # whiteList = ['0050']
+        whiteList = []
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:  # formal
@@ -1081,6 +1081,34 @@ class stockClass(object):
         conn.commit()
         cursor.close()
         conn.close()
+
+        self.generate_potential_stocks_txt()
+
+    def generate_potential_stocks_txt(self):
+        try:
+            # Execute the SQL command
+            conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+            cursor = conn.cursor()
+            cursor.execute('SELECT stockcode,stockName,stockIsYesterdayPotential,stockIsTodayPotential FROM stocktable WHERE stockIsYesterdayPotential=1 OR stockIsTodayPotential=1')
+            # Fetch all the rows in a list of lists.
+            stock_potential_info = {}
+            if_potential_dict = {0: '不是', 1: '是'}
+            results = cursor.fetchall()
+            for row in results:
+                stock_potential_info[row[0]] = [row[1], if_potential_dict[int(row[2])], if_potential_dict[int(row[3])]]
+
+        except:
+            print("Error: unable to fecth data")
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+        import json
+        with open('flask-stock-decken/potential_stocks.json', 'w', encoding='utf8') as outfile:
+            json.dump(stock_potential_info, outfile, ensure_ascii=False)
+
+        # return stock_potential_info
 
     def getPttStockNewsComments(self,pages):
         pages = int(pages)
