@@ -1,6 +1,11 @@
 # -*- coding: UTF-8 -*-
 
 '''For the test purpose, unmark lines with '# for test' and mark '# formal'
+new-stcok-fetching policy
+1. run 'get_stockCodes.py'
+2. accumulate new stocks and put them into stockCodes of stockClassInstance.py
+3. run 'stockClassInstance.py retrieveStockData' with the parameter "" (python3 /home/pi/Python/pythonStockEvaluation/stockClassInstance.py retrieveStockData "")
+4. run 'stockClassInstance.py computeStockKD' with the parameter "" (python3 /home/pi/Python/pythonStockEvaluation/stockClassInstance.py computeStockKD "")
 '''
 
 from fake_useragent import UserAgent
@@ -56,8 +61,11 @@ class stockClass(object):
         self.threadAmount = threadAmount
         self.training = training
 
-    def getStockCodes(self):
-        sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
+    def getStockCodes(self, get_new=False):
+        if get_new:
+            sql = "SELECT stockCode FROM stocktable WHERE stockNewArrival='new'"
+        else:
+            sql = "SELECT stockCode FROM stocktable WHERE stockFinished='no'"
         try:
             # Execute the SQL command
             conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
@@ -99,7 +107,7 @@ class stockClass(object):
         else:
             import random
             random.seed(time.time())
-            offset = random.randint(0, 50)
+            offset = random.randint(0, 500)
 
         while True:
             try:
@@ -140,6 +148,24 @@ class stockClass(object):
     	                proxyFailtimes=proxyFailtimes+%s
                     WHERE proxyIPPort=%s"""
                 cur.execute(sql, (executionTime if succeedOrFail else (executionTime + 10), 0 if succeedOrFail else 1, proxy))  # 10 is for penalty when failing
+
+                cur.close()
+                conn.commit()
+                conn.close()
+
+                return
+            except:
+                print("Unexpected error:", sys.exc_info())
+                cur.close()
+                conn.close()
+
+    def update_stocktable_new_to_old(self):
+        while True:
+            try:
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cur = conn.cursor()
+                sql = """UPDATE stocktable SET stockNewArrival=CONCAT('old_', CURRENT_TIMESTAMP) WHERE stockNewArrival='new'"""
+                cur.execute(sql)  # 10 is for penalty when failing
 
                 cur.close()
                 conn.commit()
@@ -296,6 +322,41 @@ class stockClass(object):
         # str(int(splitDate[0]) + 1911)
         return file_date
 
+    def fetch_new_stocks(self):
+        url = "http://pchome.megatime.com.tw/js/stock_list.js"
+        r = requests.get(url)
+        r.encoding = 'utf8'
+        # print(r.text)
+
+        pattern = re.compile(r'\(\s*\'(.*?)\'\s*,\s*\'(.*?)\'\s*,\s*\'(.*?)\'\s*,\s*\'(.*?)\'\s*\)')
+        # match = pattern.match("['0050', '元大台灣50', '元大台灣50', ',0_00,']")
+
+        stocksArray = []
+        stocks = re.findall(r'\[\'(.*?)\'\s*,\s*\'(.*?)\'\s*,\s*\'(.*?)\'\s*,\s*\'(.*?)\'\s*\]', r.text)
+        for stock in stocks:
+            match = pattern.match(str(stock))
+            stocksArray.append((match.group(1), match.group(2), match.group(3), match.group(4)))
+            # print(match.group(1))
+            # print(match.group(2))
+            # print(match.group(3))
+            # print(match.group(4))
+
+        print(stocksArray)
+
+        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+        # conn.set_charset('utf8')
+
+        cur = conn.cursor()
+        # cur.execute("SELECT * FROM 膠片")
+        insert = "INSERT IGNORE INTO stocktable (stockCode, stockName, stockFullname, stockNote) VALUES (%s, %s, %s, %s)"
+        cur.executemany(insert, stocksArray)
+        cur.close()
+        conn.commit()
+        conn.close()
+
+    def fetch_new_stock_index_all(self):
+        pass
+
     def retrieveStockDataFromFile(self, fetchDate):
         import urllib.request
 
@@ -399,7 +460,7 @@ class stockClass(object):
         add_num = 0 if self.training else 1
         while i < endCode:
             # for stock in stockCodes:
-            stock = stockCodes[i]
+            stock = str(stockCodes[i])
             self.updateStockFinished(stock, 'ing')
             finish = False
             # for year in range(now.year, 1998, -1):
