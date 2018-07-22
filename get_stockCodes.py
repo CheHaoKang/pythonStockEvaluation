@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     print(stocksArray)
 
-    conn = pymysql.connect(host='localhost', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
     # conn.set_charset('utf8')
 
     cur = conn.cursor()

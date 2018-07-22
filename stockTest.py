@@ -1,10 +1,18 @@
-import json
-with open('flask-stock-decken/potential_stocks.json', 'w', encoding='utf8') as outfile:
-    json.dump({'1337':['再生-KY', '不是', '是']}, outfile, ensure_ascii=False)
+import urllib.request
 
-with open('flask-stock-decken/potential_stocks.json', encoding='utf8') as f:
-    datastore = json.load(f)
-    print(datastore['1337'])
+print('Begin downloading stock info...')
+
+url = 'http://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date=20180720&type=ALL'
+urllib.request.urlretrieve(url, 'stock_all_20180720.csv')
+
+
+# import json
+# with open('flask-stock-decken/potential_stocks.json', 'w', encoding='utf8') as outfile:
+#     json.dump({'1337':['再生-KY', '不是', '是']}, outfile, ensure_ascii=False)
+#
+# with open('flask-stock-decken/potential_stocks.json', encoding='utf8') as f:
+#     datastore = json.load(f)
+#     print(datastore['1337'])
 # import torch
 # from torch.autograd import Variable
 # from torch.optim import SGD

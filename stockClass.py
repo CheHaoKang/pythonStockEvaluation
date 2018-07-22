@@ -31,6 +31,7 @@ from operator import itemgetter
 # from pylab import mpl
 import glob
 import matplotlib
+import traceback
 
 # print(matplotlib.matplotlib_fname())
 #
@@ -121,6 +122,7 @@ class stockClass(object):
                 conn.commit()
                 conn.close()
 
+                print('Using proxy=>' + proxy[0] + ' offset=>' + str(offset) + '\n\n')
                 return proxy[0]
             except:
                 print("Unexpected error:", sys.exc_info())
@@ -286,6 +288,91 @@ class stockClass(object):
                     cur.close()
                     conn.close()
 
+    def transfer_Chinesedate_to_numericdate(self, input_date):
+        input_date = re.sub('日.*', '', input_date)
+        re_date = re.compile(r'(\d{3})年(\d{2})月(\d{2})$', re.S | re.UNICODE)
+        for file_date in re_date.findall(input_date):
+            file_date = str(int(file_date[0]) + 1911) + file_date[1] + file_date[2]
+        # str(int(splitDate[0]) + 1911)
+        return file_date
+
+    def retrieveStockDataFromFile(self, fetchDate):
+        import urllib.request
+
+        for f in glob.glob("stock_all_*"):
+            os.remove(f)
+
+        print('Begin downloading stock info...')
+        url = 'http://www.twse.com.tw/exchangeReport/MI_INDEX?response=csv&date=' + fetchDate + '&type=ALL'
+        while True:
+            try:
+                for f in glob.glob("stock_all_*"):
+                    os.remove(f)
+                urllib.request.urlretrieve(url, 'stock_all_' + fetchDate + '.csv')
+                break
+            except:
+                traceback.print_exc()
+                sleep(1)
+
+        stockCodes = self.getStockCodes()
+
+        import csv
+        start_fetch = False
+        column_defined = False
+        with open('stock_all_' + fetchDate + '.csv', newline='') as csvfile:
+            rows = csv.reader(csvfile, delimiter=',')
+
+            formalized_date = re.sub(r'(\d{4})(\d{2})(\d{2})', r'\1-\2-\3', fetchDate)
+
+            # column_info = ['代號', '名稱', '股數', '收盤價']
+            column_info = ['名稱', '股數', '收盤價']
+            column_dict = {}
+            stockDataArray = []
+            for row in rows:
+                str_row = str(row)
+                # if start_fetch:
+                #     print(str_row)
+                if '收盤行情' in str_row and not start_fetch:
+                    file_date = self.transfer_Chinesedate_to_numericdate(str_row)
+                    if file_date!=fetchDate:
+                        print('***ERROR*** File date does not correspond to fetching date.\n End fetching...\n')
+                        os.kill(os.getpid(), 9)
+                    start_fetch = True
+                    continue
+                elif start_fetch and not column_defined:
+                    for index,column in enumerate(row):
+                        for defined_column in column_info:
+                            if defined_column in column:
+                                column_defined = True
+                                column_dict[index] = column
+                elif start_fetch and column_defined:
+                    row_stock_code = row[0].replace('="', '').replace('"', '')
+                    for one_stock_code in stockCodes:
+                        if one_stock_code == row_stock_code:
+                            if not (row[8].isdigit() or row[8].replace('.', '', 1).isdigit()):
+                                break
+                            stockDataArray.append((one_stock_code, formalized_date, row[8], row[2]))
+
+                    # for index, column in enumerate(row):
+                    #     for one_stock_code in stockCodes:
+                    #         if one_stock_code in column:
+
+        if stockDataArray:  # not empty
+            try:
+                conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                cur = conn.cursor()
+                insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
+                cur.executemany(insert, stockDataArray)
+
+                cur.close()
+                conn.commit()
+                conn.close()
+            except:
+                print("Unexpected error:", sys.exc_info())
+                cur.close()
+                conn.close()
+        print(stockDataArray)
+
     #SELECT stockDate, COUNT(stockDate) FROM stockdata GROUP BY stockDate ORDER BY stockDate DESC
     def retrieveStockData(self, stockCodes, fromCode, endCode, offset, fetchDate):
         # global globalTimeout
@@ -344,7 +431,8 @@ class stockClass(object):
                         # while not fetchSucceed:
                         while True:
                             try:
-                                if self.training:
+                                # if self.training:
+                                if True:
                                     nowProxy = self.getProxy(offset)
                                     proxies = {"http": "http://" + nowProxy}
 
