@@ -370,6 +370,7 @@ class stockClass(object):
                 for f in glob.glob("stock_all_*"):
                     os.remove(f)
                 urllib.request.urlretrieve(url, 'stock_all_' + fetchDate + '.csv')
+                os.system("iconv -f big5 -t utf8 stock_all_" + fetchDate + ".csv -o stock_all_" + fetchDate + "_utf8.csv")
                 break
             except:
                 traceback.print_exc()
@@ -380,7 +381,7 @@ class stockClass(object):
         import csv
         start_fetch = False
         column_defined = False
-        with open('stock_all_' + fetchDate + '.csv', newline='') as csvfile:
+        with open('stock_all_' + fetchDate + '_utf8.csv', newline='') as csvfile:
             rows = csv.reader(csvfile, delimiter=',')
 
             formalized_date = re.sub(r'(\d{4})(\d{2})(\d{2})', r'\1-\2-\3', fetchDate)
