@@ -905,7 +905,7 @@ class stockClass(object):
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
         # whiteList = ['2324','8429']
-        whiteList = ['2330', '2412']
+        whiteList = ['0050', '2330', '2412', '2105', '2823', '2885', '2891']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:  # formal
@@ -1251,8 +1251,9 @@ class stockClass(object):
             stock_potential_info = {}
             if_potential_dict = {0: '不是', 1: '是'}
             results = cursor.fetchall()
+            certificate_deposit_stocks = ['0050', '2330', '2412', '2105', '2823', '2885', '2891']
             for row in results:
-                stock_potential_info[row[0]] = [row[1], if_potential_dict[int(row[2])], if_potential_dict[int(row[3])]]
+                stock_potential_info[row[0]] = [row[1], if_potential_dict[int(row[2])], if_potential_dict[int(row[3])], '定存股' if row[0] in certificate_deposit_stocks else '']
 
         except:
             print("Error: unable to fecth data")
