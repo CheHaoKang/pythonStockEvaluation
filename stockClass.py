@@ -370,7 +370,10 @@ class stockClass(object):
                 for f in glob.glob("stock_all_*"):
                     os.remove(f)
                 urllib.request.urlretrieve(url, 'stock_all_' + fetchDate + '.csv')
-                os.system("iconv -f big5 -t utf8 stock_all_" + fetchDate + ".csv -o stock_all_" + fetchDate + "_utf8.csv")
+
+                import platform
+                if 'linux' in platform.platform().lower():
+                    os.system("iconv -f big5 -t utf8 stock_all_" + fetchDate + ".csv -o stock_all_" + fetchDate + "_utf8.csv")
                 break
             except:
                 traceback.print_exc()
@@ -902,7 +905,7 @@ class stockClass(object):
         stockCodeIndices = {}
         # whiteList = ['0050','2634','2722','3057','3356','4141','5519','5706','8072','8429']
         # whiteList = ['2324','8429']
-        whiteList = []
+        whiteList = ['2330', '2412']
         for stock in stockCodeCurrentindex:
             try:
                 if abs(float(stockCodeCurrentindex[stock][1])-float(stockCodeDateLowestindex[stock][1]))/float(stockCodeDateLowestindex[stock][1]) < 0.2 or stock in whiteList:  # formal
