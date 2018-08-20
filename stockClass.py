@@ -444,7 +444,125 @@ class stockClass(object):
                 conn.close()
         print(stockDataArray)
 
-    def retrieveStockDataCounterFromFile(self, fetchDate):
+    def retrieveStockDataCounterFromFile(self, fetchDate, history=True):
+        if history:
+            from datetime import datetime, timedelta
+            import urllib.request
+
+            for f in glob.glob("stock_counter_all_*"):
+                os.remove(f)
+
+            stockCodes = self.getStockCodes()
+
+            if not os.path.exists('counter_stocks'):
+                os.makedirs('counter_stocks')
+
+            nowProxy = self.getProxy(0)
+            proxies = {"http": "http://" + nowProxy}
+
+            while fetchDate!='20090101':
+                print('Begin downloading stock info...')
+
+                formalized_date = str(int(fetchDate[:4]) - 1911) + re.sub(r'(\d{4})(\d{2})(\d{2})', r'/\2/\3', fetchDate)
+                url = 'http://www.tpex.org.tw/web/stock/aftertrading/daily_close_quotes/stk_quote_result.php?l=zh-tw&o=csv&d=' + formalized_date + '&s=0,asc,0'
+                print(url)
+                while True:
+                    try:
+                        # create the object, assign it to a variable
+                        proxy = urllib.request.ProxyHandler(proxies)
+                        # construct a new opener using your proxy settings
+                        opener = urllib.request.build_opener(proxy)
+                        # install the openen on the module-level
+                        urllib.request.install_opener(opener)
+                        # make a request
+                        urllib.request.urlretrieve(url, 'counter_stocks/stock_counter_all_' + fetchDate + '.csv')
+
+                        import platform
+                        if 'linux' in platform.platform().lower():
+                            os.system("iconv -f big5 -t utf8 stock_counter_all_" + fetchDate + ".csv -o stock_counter_all_" + fetchDate + "_utf8.csv")
+                        break
+                    except:
+                        traceback.print_exc()
+                        self.updateProxyInfo(nowProxy, False, 0)
+                        nowProxy = self.getProxy(0)
+                        proxies = {"http": "http://" + nowProxy}
+
+                '''
+                import csv
+                start_fetch = False
+                column_defined = False
+                import platform
+                if 'linux' in platform.platform().lower():
+                    csv_file_name = 'stock_counter_all_' + fetchDate + '_utf8.csv'
+                else:
+                    csv_file_name = 'stock_counter_all_' + fetchDate + '.csv'
+
+                with open(csv_file_name, newline='') as csvfile:
+                    rows = csv.reader(csvfile, delimiter=',')
+
+                    formalized_date = re.sub(r'(\d{4})(\d{2})(\d{2})', r'\1-\2-\3', fetchDate)
+
+                    # column_info = ['代號', '名稱', '股數', '收盤價']
+                    column_info = ['名稱', '股數', '收盤']
+                    column_dict = {}
+                    stockDataArray = []
+                    for row in rows:
+                        str_row = str(row)
+                        # if start_fetch:
+                        #     print(str_row)
+                        if '資料日期' in str_row and not start_fetch:
+                            file_date = re.sub(r'[^\d\/]', r'', str_row)  # remove 資料日期
+                            file_date = re.sub(r'(\d{3})/(\d{2})/(\d{2})', r'\1年\2月\3日', file_date)
+                            file_date = self.transfer_Chinesedate_to_numericdate(file_date)
+
+                            if file_date != fetchDate:
+                                print('***ERROR*** File date does not correspond to fetching date.\n End fetching...\n')
+                                os.kill(os.getpid(), 9)
+                            start_fetch = True
+                            continue
+                        elif start_fetch and not column_defined:
+                            for index, column in enumerate(row):
+                                for defined_column in column_info:
+                                    if defined_column in column:
+                                        column_defined = True
+                                        column_dict[index] = column
+                        elif start_fetch and column_defined and row:
+                            row_stock_code = row[0].replace('="', '').replace('"', '').strip()
+                            for one_stock_code in stockCodes:
+                                # print('===' + one_stock_code + '===' + row_stock_code + '===')
+                                if one_stock_code == row_stock_code:
+                                    # if row_stock_code=='6218':
+                                    #     print(row_stock_code, row)
+                                    if not (row[2].isdigit() or row[2].replace('.', '', 1).isdigit()):
+                                        break
+                                    stockDataArray.append((one_stock_code, formalized_date, row[2], row[8]))
+
+                                    # for index, column in enumerate(row):
+                                    #     for one_stock_code in stockCodes:
+                                    #         if one_stock_code in column:
+
+                if stockDataArray:  # not empty
+                    try:
+                        conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                        cur = conn.cursor()
+                        insert = "INSERT IGNORE INTO stockdata_copy (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
+                        cur.executemany(insert, stockDataArray)
+
+                        cur.close()
+                        conn.commit()
+                        conn.close()
+                    except:
+                        print("Unexpected error:", sys.exc_info())
+                        cur.close()
+                        conn.close()
+                print(stockDataArray)
+                '''
+                fetchDate = datetime.strptime(fetchDate, '%Y%m%d') - timedelta(days=1)
+                fetchDate = fetchDate.strftime("%Y%m%d")
+
+            exit(1)
+
+        ################################
         import urllib.request
 
         for f in glob.glob("stock_counter_all_*"):
