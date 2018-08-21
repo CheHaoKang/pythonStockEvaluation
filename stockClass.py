@@ -316,7 +316,7 @@ class stockClass(object):
 
     def transfer_Chinesedate_to_numericdate(self, input_date):
         input_date = re.sub('日.*', '', input_date)
-        re_date = re.compile(r'(\d{3})年(\d{2})月(\d{2})$', re.S | re.UNICODE)
+        re_date = re.compile(r'(\d{2,3})年(\d{2})月(\d{2})$', re.S | re.UNICODE)
         for file_date in re_date.findall(input_date):
             file_date = str(int(file_date[0]) + 1911) + file_date[1] + file_date[2]
         # str(int(splitDate[0]) + 1911)
@@ -444,7 +444,7 @@ class stockClass(object):
                 conn.close()
         print(stockDataArray)
 
-    def retrieveStockDataCounterFromFile(self, fetchDate, history=True):
+    def retrieveStockDataCounterFromFile(self, fetchDate, history=False):
         if history:
             from datetime import datetime, timedelta
             import urllib.request
@@ -460,7 +460,7 @@ class stockClass(object):
             nowProxy = self.getProxy(0)
             proxies = {"http": "http://" + nowProxy}
 
-            while fetchDate!='20090101':
+            while fetchDate!='20070101':
                 print('Begin downloading stock info...')
 
                 formalized_date = str(int(fetchDate[:4]) - 1911) + re.sub(r'(\d{4})(\d{2})(\d{2})', r'/\2/\3', fetchDate)
@@ -559,6 +559,7 @@ class stockClass(object):
                 '''
                 fetchDate = datetime.strptime(fetchDate, '%Y%m%d') - timedelta(days=1)
                 fetchDate = fetchDate.strftime("%Y%m%d")
+                sleep(10)
 
             exit(1)
 
@@ -656,6 +657,86 @@ class stockClass(object):
                 cur.close()
                 conn.close()
         print(stockDataArray)
+
+    def insertStockDataCounterFromFile(self, fetchDate, folder_name='counter_stocks'):
+        from os import listdir
+        from os.path import isfile, join
+        onlyfiles = [f for f in listdir(folder_name) if isfile(join(folder_name, f))]
+
+        stockCodes = self.getStockCodes()
+
+        for csv_file_name in onlyfiles:
+            import csv
+            start_fetch = False
+            column_defined = False
+            fetchDate = csv_file_name.replace('stock_counter_all_', '').replace('.csv', '')
+
+            # import platform
+            # if 'linux' in platform.platform().lower():
+            #     csv_file_name = 'stock_counter_all_' + fetchDate + '_utf8.csv'
+            # else:
+            #     csv_file_name = 'stock_counter_all_' + fetchDate + '.csv'
+
+            with open(folder_name + '/' + csv_file_name, newline='') as csvfile:
+                rows = csv.reader(csvfile, delimiter=',')
+
+                formalized_date = re.sub(r'(\d{4})(\d{2})(\d{2})', r'\1-\2-\3', fetchDate)
+
+                # column_info = ['代號', '名稱', '股數', '收盤價']
+                column_info = ['名稱', '股數', '收盤']
+                column_dict = {}
+                stockDataArray = []
+                for row in rows:
+                    str_row = str(row)
+                    # if start_fetch:
+                        # print(str_row)
+                    if '資料日期' in str_row and not start_fetch:
+                        file_date = re.sub(r'[^\d\/]', r'', str_row)  # remove 資料日期
+                        file_date = re.sub(r'(\d{2,3})/(\d{2})/(\d{2})', r'\1年\2月\3日', file_date)
+                        file_date = self.transfer_Chinesedate_to_numericdate(file_date)
+
+                        if file_date != fetchDate:
+                            print('***ERROR*** File date does not correspond to fetching date.\n End fetching...\n')
+                            os.kill(os.getpid(), 9)
+                        start_fetch = True
+                        continue
+                    elif start_fetch and not column_defined:
+                        for index, column in enumerate(row):
+                            for defined_column in column_info:
+                                if defined_column in column:
+                                    column_defined = True
+                                    column_dict[index] = column
+                    elif start_fetch and column_defined and row:
+                        row_stock_code = row[0].replace('="', '').replace('"', '').strip()
+                        for one_stock_code in stockCodes:
+                            # print('===' + one_stock_code + '===' + row_stock_code + '===')
+                            if one_stock_code == row_stock_code:
+                                # if row_stock_code=='6218':
+                                #     print(row_stock_code, row)
+                                if not (row[2].isdigit() or row[2].replace('.', '', 1).isdigit()):
+                                    break
+                                stockDataArray.append((one_stock_code, formalized_date, row[2], row[8]))
+
+                                # for index, column in enumerate(row):
+                                #     for one_stock_code in stockCodes:
+                                #         if one_stock_code in column:
+
+            if stockDataArray:  # not empty
+                try:
+                    conn = pymysql.connect(host='192.168.2.55', port=3306, user='root', passwd='89787198', db='stockevaluation', charset="utf8")
+                    cur = conn.cursor()
+                    insert = "INSERT IGNORE INTO stockdata (stockCode, stockDate, stockIndex, stockVolume) VALUES (%s, %s, %s, %s)"
+                    cur.executemany(insert, stockDataArray)
+
+                    cur.close()
+                    conn.commit()
+                    conn.close()
+                except:
+                    print("Unexpected error:", sys.exc_info())
+                    cur.close()
+                    conn.close()
+            print(stockDataArray)
+
 
     #SELECT stockDate, COUNT(stockDate) FROM stockdata GROUP BY stockDate ORDER BY stockDate DESC
     def retrieveStockData(self, stockCodes, fromCode, endCode, offset, fetchDate):

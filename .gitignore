@@ -10,3 +10,4 @@ web_page/static/stockDrawing*.png
 ghostdriver.log
 stock.log
 stock_all_*.csv
+counter_stocks/*

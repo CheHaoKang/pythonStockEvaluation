@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # stockInstance.getStockInfo()
 
     ##############################################
-    noMultiThread = ['retrieveStockDataCounterFromFile', 'retrieveStockDataFromFile', 'getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex', 'getPttStockNewsComments','computeStockSentiment','computeNGramfreq','aggregateGramfreq']
+    noMultiThread = ['insertStockDataCounterFromFile', 'retrieveStockDataCounterFromFile', 'retrieveStockDataFromFile', 'getInstitutionalInvestors', 'retrieveLowestIndexCurrentIndex', 'getPttStockNewsComments','computeStockSentiment','computeNGramfreq','aggregateGramfreq']
 
     if len(sys.argv) < 2:
         print("The first parameter must be the function you want to call.")
@@ -43,6 +43,7 @@ if __name__ == "__main__":
             'retrieveStockData': stockInstance.retrieveStockData,
             'retrieveStockDataFromFile': stockInstance.retrieveStockDataFromFile,
             'retrieveStockDataCounterFromFile': stockInstance.retrieveStockDataCounterFromFile,
+            'insertStockDataCounterFromFile': stockInstance.insertStockDataCounterFromFile,
             'computeStockKD': stockInstance.computeStockKD,
             'getInstitutionalInvestors': stockInstance.getInstitutionalInvestors,
             'retrieveLowestIndexCurrentIndex': stockInstance.retrieveLowestIndexCurrentIndex,

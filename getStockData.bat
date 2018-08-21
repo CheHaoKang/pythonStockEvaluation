@@ -1,5 +1,6 @@
 cd "C:\Users\blueplanet\PycharmProjects\pythonStockEvaluation"
 C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveStockDataFromFile "%date:~0,4%%date:~5,2%%date:~8,2%"
+C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveStockDataCounterFromFile "%date:~0,4%%date:~5,2%%date:~8,2%"
 rem C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveStockData ""
 rem C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveStockData "20180612"
 rem C:\\Users\\blueplanet\\Anaconda3\\python.exe stockClassInstance.py retrieveStockData "20180607"
